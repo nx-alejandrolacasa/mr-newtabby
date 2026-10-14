@@ -1,24 +1,36 @@
 // Rasterize the extension icon (same design as assets/icons/icon.svg) to a
 // 128×128 PNG for Chrome, which doesn't accept SVG manifest icons. Pure
-// Node, no dependencies: signed-distance fields for the rounded rects and a
+// Node, no dependencies: signed-distance fields for the strokes and a
 // minimal PNG encoder. The Chrome build calls it, so dist/ never drifts from
 // the SVG; scripts/generate-icon.mjs writes the committed copy for the store.
 import { deflateSync } from "node:zlib";
 
 const SIZE = 128;
 
-const GRAD_A = [74, 90, 200]; // #4a5ac8
-const GRAD_B = [124, 77, 255]; // #7c4dff
+const BACKGROUND = [0, 0, 0];
 const PAPER = [255, 255, 255];
-const INK = [28, 28, 46]; // #1c1c2e
+const HALF_STROKE = 4;
 
 type Rect = { x: number; y: number; w: number; h: number; r: number };
-const BAR: Rect = { x: 20, y: 46, w: 88, h: 36, r: 18 };
-const MARKS: Rect[] = [
-  { x: 30, y: 60, w: 16, h: 8, r: 4 },
-  { x: 52, y: 60, w: 24, h: 8, r: 4 },
-  { x: 82, y: 60, w: 16, h: 8, r: 4 },
+type Point = readonly [number, number];
+
+const MOUNTAIN: Point[] = [
+  ...quadratic([16, 98], [41.7, 74.5], [46, 40]),
+  [82, 40],
+  ...quadratic([82, 40], [86.3, 74.5], [112, 98]),
 ];
+const SNOW: Point[] = [[40.7, 62], [52.4, 72], [64, 62], [75.7, 72], [87.3, 62]];
+
+function quadratic(p0: Point, p1: Point, p2: Point, steps = 16): Point[] {
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    const w = [(1 - t) ** 2, 2 * (1 - t) * t, t ** 2];
+    return [
+      w[0]! * p0[0] + w[1]! * p1[0] + w[2]! * p2[0],
+      w[0]! * p0[1] + w[1]! * p1[1] + w[2]! * p2[1],
+    ];
+  });
+}
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -36,19 +48,36 @@ function roundedRectSDF(px: number, py: number, rect: Rect): number {
   );
 }
 
+function segmentDistance(px: number, py: number, [ax, ay]: Point, [bx, by]: Point): number {
+  const ex = bx - ax;
+  const ey = by - ay;
+  const lengthSquared = ex * ex + ey * ey;
+  const t = lengthSquared ? clamp01(((px - ax) * ex + (py - ay) * ey) / lengthSquared) : 0;
+  return Math.hypot(px - ax - ex * t, py - ay - ey * t);
+}
+
+function polylineSDF(px: number, py: number, points: readonly Point[]): number {
+  let d = Infinity;
+  for (let i = 1; i < points.length; i++) {
+    d = Math.min(d, segmentDistance(px, py, points[i - 1]!, points[i]!));
+  }
+  return d - HALF_STROKE;
+}
+
+function glyphSDF(px: number, py: number): number {
+  return Math.min(
+    polylineSDF(px, py, MOUNTAIN),
+    polylineSDF(px, py, SNOW)
+  );
+}
+
 function pixel(x: number, y: number): number[] {
   const cx = x + 0.5;
   const cy = y + 0.5;
   const shape = coverage(roundedRectSDF(cx, cy, { x: 0, y: 0, w: SIZE, h: SIZE, r: 28 }));
   if (shape === 0) return [0, 0, 0, 0];
 
-  const t = (x + y) / (2 * (SIZE - 1));
-  let rgb = GRAD_A.map((a, i) => mix(a, GRAD_B[i] ?? a, t));
-
-  rgb = blend(rgb, PAPER, coverage(roundedRectSDF(cx, cy, BAR)));
-  for (const mark of MARKS) {
-    rgb = blend(rgb, INK, coverage(roundedRectSDF(cx, cy, mark)));
-  }
+  const rgb = blend(BACKGROUND, PAPER, coverage(glyphSDF(cx, cy)));
 
   return [...rgb.map(Math.round), Math.round(shape * 255)];
 }

@@ -110,6 +110,14 @@ The shared package owns all UI and behavior. Each browser package provides only 
 - **Lint**: `npm run lint` (runs `web-ext lint` against both `dist/`s).
 - **Re-run** `npm run build` after editing `.env`.
 
+The new-tab page's favicon (`packages/shared/assets/icons/favicon.svg`) is the
+icon's glyph without the background, dark or white to follow the browser's
+light or dark mode through a `prefers-color-scheme` media query inside the
+SVG. Chrome's store PNG is rendered from the SVG design at build time
+(`packages/shared/src/build-helpers/icon-png.ts`);
+`node --experimental-strip-types scripts/generate-icon.mjs` writes the same
+PNG to `packages/shared/assets/icons/icon.png` for the store listing.
+
 ## Credits
 
 - [Unsplash](https://unsplash.com) — photo API and the curated wallpaper collection.

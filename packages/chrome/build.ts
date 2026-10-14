@@ -21,6 +21,7 @@ const REQUIRED_DIST_FILES = [
   "theme-init.js",
   "_locales/en/messages.json",
   "icons/icon.png",
+  "icons/favicon.svg",
   "icons/bmc-logo.svg",
   "fonts/Cookie-Regular.ttf",
   "fonts/Satoshi-Variable.ttf",
