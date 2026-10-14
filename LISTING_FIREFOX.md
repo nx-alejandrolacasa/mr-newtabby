@@ -63,10 +63,9 @@ api.unsplash.com (when "Show background image" is enabled), used to
 fetch a random photo from Unsplash's curated wallpaper collection
 1053828.
 
-About this version (1.12.0): this is a rename of the add-on previously
-listed as "Topmarks". The name, icon, and homepage URL changed; the
-add-on ID, functionality, permissions, and data handling are identical
-to 1.11.0.
+About this version (1.13.0): new add-on icon and a matching favicon on
+the new tab page. Functionality, permissions, and data handling are
+identical to 1.12.0.
 
 Build: npm install && npm run build (esbuild monorepo; see README).
 The public Unsplash Access Key (Client-ID) is read from .env at build
@@ -118,6 +117,12 @@ maps. No other code generation or templating is involved.
 ## Release notes
 
 > Paste the latest entry into the version's "Release notes" / "What's new" field. Newest first.
+
+### v1.13.0
+
+```
+A new icon: Mount Fuji, snow cap included. The new tab page now also shows a matching favicon in the tab strip that follows your browser's light or dark theme. Nothing else changed.
+```
 
 ### v1.12.0
 

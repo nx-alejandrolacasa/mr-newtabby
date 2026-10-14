@@ -107,6 +107,12 @@ If we don't have these yet, skip them; they can be added in a later edit without
 
 > CWS shows version notes on the item's update. Paste the latest entry as plain text. Newest first.
 
+### v1.13.0
+
+```
+A new icon: Mount Fuji, snow cap included. The new tab page now also shows a matching favicon in the tab strip that follows your browser's light or dark theme. Nothing else changed.
+```
+
 ### v1.12.0
 
 ```
