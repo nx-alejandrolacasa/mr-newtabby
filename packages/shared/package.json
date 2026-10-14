@@ -1,6 +1,6 @@
 {
   "name": "@mr-newtabby/shared",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "private": true,
   "license": "MIT",
   "description": "Browser-agnostic app logic, assets, and locales shared between Firefox and Chrome.",
