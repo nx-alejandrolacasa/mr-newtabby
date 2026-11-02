@@ -57,38 +57,17 @@ Photos courtesy of Unsplash.
 > Paste into AMO's "Notes for reviewer" field on submission.
 
 ```
-This extension reads bookmarks via the bookmarks API and renders the
-toolbar on the new tab page. The only network destination is
-api.unsplash.com (when "Show background image" is enabled), used to
-fetch a random photo from Unsplash's curated wallpaper collection
-1053828.
+This extension reads bookmarks via the bookmarks API and renders the toolbar on the new tab page. The only network destination is api.unsplash.com (when "Show background image" is enabled), used to fetch a random photo from Unsplash's curated wallpaper collection 1053828.
 
 About this version (1.14.0): adds a glass tint slider, a canvas-drawn clock, wallpaper-aware text colour, and rename/delete of bookmarks via a right-click menu with a confirmation dialog. Rename/delete use the existing "bookmarks" permission and only run on an explicit user action. The wallpaper image is the same images.unsplash.com URL as before, now requested with CORS so its pixels can be averaged locally for text contrast; nothing is sent anywhere. Two fonts are bundled (Satoshi, and an OFL Shippori Antique B1 subset); no remote fonts. Permissions and hosts are identical to 1.13.0.
 
-Build: npm install && npm run build (esbuild monorepo; see README).
-The public Unsplash Access Key (Client-ID) is read from .env at build
-time and embedded into the bundle, per Unsplash's API guidelines for
-client-side apps — it is the only value injected into the source.
+Build: npm install && npm run build (esbuild monorepo; see README). The public Unsplash Access Key (Client-ID) is read from .env at build time and embedded into the bundle, per Unsplash's API guidelines for client-side apps — it is the only value injected into the source.
 
-Favicons: Firefox does not expose its favicon cache to extensions
-(the page-icon: scheme is chrome-privileged), so while the optional
-"tabs" permission is granted the extension remembers the favicon URLs
-of tabs the user opens (tabs.favIconUrl, keyed by site origin, stored
-in storage.local) and uses them for the bookmarks bar, falling back to
-the bookmarked site's own /favicon.ico. No third-party favicon
-services are used and the cache never leaves the device.
+Favicons: Firefox does not expose its favicon cache to extensions (the page-icon: scheme is chrome-privileged), so while the optional "tabs" permission is granted the extension remembers the favicon URLs of tabs the user opens (tabs.favIconUrl, keyed by site origin, stored in storage.local) and uses them for the bookmarks bar, falling back to the bookmarked site's own /favicon.ico. No third-party favicon services are used and the cache never leaves the device.
 
-The optional "Tab groups" feature (off by default) requests the
-"tabs" and "tabGroups" permissions only when the user enables it in
-Settings. It reads open tab groups (names, colors, and member tab
-URLs) to snapshot them in local storage so closed groups can be
-reopened from the new tab page, and re-creates a group via tabs.group
-when one is reopened. The "tabs" grant also powers the favicon cache
-described above. This data is stored only on the device and is never
-transmitted.
+The optional "Tab groups" feature (off by default) requests the "tabs" and "tabGroups" permissions only when the user enables it in Settings. It reads open tab groups (names, colors, and member tab URLs) to snapshot them in local storage so closed groups can be reopened from the new tab page, and re-creates a group via tabs.group when one is reopened. The "tabs" grant also powers the favicon cache described above. This data is stored only on the device and is never transmitted.
 
-No analytics, telemetry, or crash reporting. No remote code. No
-content scripts. Bookmarks data never leaves the browser.
+No analytics, telemetry, or crash reporting. No remote code. No content scripts. Bookmarks data never leaves the browser.
 ```
 
 ## Source code submission
