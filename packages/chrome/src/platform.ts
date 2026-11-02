@@ -44,6 +44,15 @@ export const platform: Platform = {
       url.searchParams.set("size", "32");
       return url.toString();
     },
+    async rename(id, title) {
+      await chrome.bookmarks.update(id, { title });
+    },
+    async remove(id) {
+      await chrome.bookmarks.remove(id);
+    },
+    async removeTree(id) {
+      await chrome.bookmarks.removeTree(id);
+    },
   },
   storage: {
     get(keys) {

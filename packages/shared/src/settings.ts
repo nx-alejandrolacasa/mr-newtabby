@@ -13,6 +13,9 @@ export const SETTINGS_DEFAULTS = {
   backgroundIntervalHours: 6,
   theme: "auto" as "auto" | "light" | "dark",
   style: "glass" as "glass" | "classic",
+  // Glass tint in seven stops, 0 = clear … 6 = fully tinted (the iOS 27
+  // Liquid Glass slider).
+  glassLevel: 3,
   bookmarksPosition: "top" as "top" | "bottom",
   // Which widget occupies the centered slot in #content.
   centerWidget: "clock" as "search" | "clock" | "none",
@@ -26,6 +29,8 @@ export const SETTINGS_DEFAULTS = {
   tabGroupsEnabled: false,
   // Whether the user dismissed the explanatory tip at the foot of the groups menu.
   tabGroupsTipDismissed: false,
+  // Whether the user dismissed the one-time "bar hidden because it's empty" notice.
+  emptyBarNoticeDismissed: false,
 };
 
 export type Settings = typeof SETTINGS_DEFAULTS;
@@ -41,6 +46,9 @@ export function getSettings(): Readonly<Settings> {
 export async function loadSettings(): Promise<void> {
   const stored = await getPlatform().storage.get(SETTINGS_DEFAULTS as any);
   settings = { ...SETTINGS_DEFAULTS, ...(stored as Partial<Settings>) };
+  if (!Number.isInteger(settings.glassLevel) || settings.glassLevel < 0 || settings.glassLevel > 6) {
+    settings.glassLevel = SETTINGS_DEFAULTS.glassLevel;
+  }
 
   // Migrate the legacy `showSearch` boolean → `centerWidget`. The array-form
   // read distinguishes "never stored" from the default, so an explicit
@@ -133,6 +141,10 @@ export function applyClockSize(): void {
   setClockScale(settings.clockSize);
 }
 
+export function applyGlassLevel(): void {
+  setGlassLevel(settings.glassLevel);
+}
+
 // Side effects of toggling tab groups. The optional-permission REQUEST is NOT
 // here — Firefox rejects permissions.request() unless it's called synchronously
 // within the user gesture, so the request runs directly in the checkbox change
@@ -151,6 +163,11 @@ export async function dismissTabGroupsTip(): Promise<void> {
   await getPlatform().storage.set({ tabGroupsTipDismissed: true });
 }
 
+export async function dismissEmptyBarNotice(): Promise<void> {
+  settings.emptyBarNoticeDismissed = true;
+  await getPlatform().storage.set({ emptyBarNoticeDismissed: true });
+}
+
 // Single place that writes the --clock-scale custom property (and mirrors it to
 // localStorage so theme-init can set it before first paint, avoiding a size
 // jump). Used both for the persisted value and for live drag previews.
@@ -162,6 +179,21 @@ function setClockScale(percent: number): void {
     /* ignore */
   }
 }
+
+function setGlassLevel(stop: number): void {
+  document.documentElement.style.setProperty("--glass-level", String(stop / 6));
+  try {
+    localStorage.setItem("glassLevel", String(stop));
+  } catch {
+    /* ignore */
+  }
+}
+
+// Sliders preview live while dragging (cheap CSS var write, no storage churn).
+const SLIDER_PREVIEW: Partial<Record<keyof Settings, (percent: number) => void>> = {
+  clockSize: setClockScale,
+  glassLevel: setGlassLevel,
+};
 
 export function syncSettingsUi(): void {
   document.querySelectorAll<HTMLElement>("[data-setting]").forEach((el) => {
@@ -210,6 +242,8 @@ function handleSettingChange(key: keyof Settings): void {
     applyCenterWidget();
   } else if (key === "clockSize") {
     applyClockSize();
+  } else if (key === "glassLevel") {
+    applyGlassLevel();
   } else if (key === "tabGroupsEnabled") {
     void applyTabGroupsEnabled();
   }
@@ -281,13 +315,11 @@ export function setupSettingsPanel(): void {
   });
 
   panel.querySelectorAll<HTMLInputElement>('input[type="range"][data-setting]').forEach((range) => {
-    // Live-preview while dragging (cheap CSS var write, no storage churn);
-    // persist once the drag ends.
+    const key = range.dataset.setting as keyof Settings;
     range.addEventListener("input", () => {
-      setClockScale(parseInt(range.value, 10));
+      SLIDER_PREVIEW[key]?.(parseInt(range.value, 10));
     });
     range.addEventListener("change", async () => {
-      const key = range.dataset.setting as keyof Settings;
       await saveSetting(key, parseInt(range.value, 10) as Settings[typeof key]);
       handleSettingChange(key);
     });

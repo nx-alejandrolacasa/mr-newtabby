@@ -39,6 +39,15 @@ export const platform: Platform = {
       // 1315616). Favicons come from tabFavicons + /favicon.ico instead.
       return null;
     },
+    async rename(id, title) {
+      await browser.bookmarks.update(id, { title });
+    },
+    async remove(id) {
+      await browser.bookmarks.remove(id);
+    },
+    async removeTree(id) {
+      await browser.bookmarks.removeTree(id);
+    },
   },
   storage: {
     get(keys) {

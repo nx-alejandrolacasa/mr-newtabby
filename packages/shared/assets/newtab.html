@@ -28,6 +28,19 @@
       data-i18n-aria-label="bookmarksBarLabel"
       aria-label="Bookmarks bar"
     ></nav>
+    <div id="empty-bar-notice" role="status" hidden>
+      <span data-i18n="emptyBarNotice"
+        >Your bookmarks toolbar is empty, so the bar stays hidden. Bookmarks you add to the toolbar will show up here.</span
+      >
+      <button
+        type="button"
+        id="empty-bar-notice-dismiss"
+        data-i18n-aria-label="dismissNotice"
+        aria-label="Dismiss"
+      >
+        ✕
+      </button>
+    </div>
     <main id="content">
       <input
         id="search-input"
@@ -38,7 +51,9 @@
         data-i18n-aria-label="searchAriaLabel"
         aria-label="Search"
       />
-      <div id="clock"></div>
+      <div id="clock">
+        <canvas id="clock-canvas" role="img" aria-live="off"></canvas>
+      </div>
     </main>
 
     <div id="bg-attribution" hidden>
@@ -110,32 +125,6 @@
       </label>
 
       <div class="setting setting-text">
-        <span id="center-widget-label" data-i18n="centerLabel">Center</span>
-        <div
-          class="toggle-group"
-          role="radiogroup"
-          aria-labelledby="center-widget-label"
-          data-setting="centerWidget"
-        >
-          <button type="button" role="radio" data-value="clock" data-i18n="centerClock">Clock</button>
-          <button type="button" role="radio" data-value="search" data-i18n="centerSearch">Search</button>
-          <button type="button" role="radio" data-value="none" data-i18n="centerNone">None</button>
-        </div>
-      </div>
-
-      <div class="setting setting-text" id="setting-clock-size">
-        <span id="clock-size-label" data-i18n="clockSizeLabel">Clock size</span>
-        <input
-          type="range"
-          data-setting="clockSize"
-          min="60"
-          max="160"
-          step="5"
-          aria-labelledby="clock-size-label"
-        />
-      </div>
-
-      <div class="setting setting-text">
         <span id="theme-label" data-i18n="themeLabel">Theme</span>
         <div
           class="toggle-group"
@@ -160,6 +149,68 @@
           <button type="button" role="radio" data-value="glass" data-i18n="styleGlass">Glass</button>
           <button type="button" role="radio" data-value="classic" data-i18n="styleClassic">Classic</button>
         </div>
+      </div>
+
+      <div class="setting setting-text setting-slider" id="setting-glass-level">
+        <span id="glass-level-label" data-i18n="glassLevelLabel">Glass tint</span>
+        <input
+          type="range"
+          data-setting="glassLevel"
+          min="0"
+          max="6"
+          step="1"
+          list="glass-level-ticks"
+          aria-labelledby="glass-level-label"
+        />
+        <datalist id="glass-level-ticks">
+          <option value="0"></option>
+          <option value="1"></option>
+          <option value="2"></option>
+          <option value="3"></option>
+          <option value="4"></option>
+          <option value="5"></option>
+          <option value="6"></option>
+        </datalist>
+        <div class="slider-ends" aria-hidden="true">
+          <span data-i18n="glassClear">Clear</span>
+          <span data-i18n="glassTinted">Tinted</span>
+        </div>
+      </div>
+
+      <div class="setting setting-text">
+        <span id="center-widget-label" data-i18n="centerLabel">Center</span>
+        <div
+          class="toggle-group"
+          role="radiogroup"
+          aria-labelledby="center-widget-label"
+          data-setting="centerWidget"
+        >
+          <button type="button" role="radio" data-value="clock" data-i18n="centerClock">Clock</button>
+          <button type="button" role="radio" data-value="search" data-i18n="centerSearch">Search</button>
+          <button type="button" role="radio" data-value="none" data-i18n="centerNone">None</button>
+        </div>
+      </div>
+
+      <div class="setting setting-text setting-slider" id="setting-clock-size">
+        <span id="clock-size-label" data-i18n="clockSizeLabel">Clock size</span>
+        <input
+          type="range"
+          data-setting="clockSize"
+          min="80"
+          max="140"
+          step="10"
+          list="clock-size-ticks"
+          aria-labelledby="clock-size-label"
+        />
+        <datalist id="clock-size-ticks">
+          <option value="80"></option>
+          <option value="90"></option>
+          <option value="100"></option>
+          <option value="110"></option>
+          <option value="120"></option>
+          <option value="130"></option>
+          <option value="140"></option>
+        </datalist>
       </div>
 
       <div class="setting setting-text">
@@ -240,6 +291,31 @@
         <div id="folder-emoji-list" class="folder-emoji-list"></div>
       </div>
     </div>
+
+    <ul id="bookmark-menu" class="folder-dropdown context-menu" role="menu" hidden>
+      <li role="none">
+        <button type="button" role="menuitem" class="menu-item" id="bookmark-menu-rename" data-i18n="menuRename">
+          Rename…
+        </button>
+      </li>
+      <li role="none">
+        <button type="button" role="menuitem" class="menu-item danger" id="bookmark-menu-delete" data-i18n="menuDelete">
+          Delete…
+        </button>
+      </li>
+    </ul>
+
+    <dialog id="bookmark-dialog" aria-labelledby="bookmark-dialog-title">
+      <form method="dialog">
+        <h2 id="bookmark-dialog-title"></h2>
+        <p id="bookmark-dialog-desc" class="overlay-desc"></p>
+        <input id="bookmark-dialog-input" type="text" autocomplete="off" spellcheck="false" data-i18n-aria-label="dialogNameLabel" aria-label="Name" />
+        <div class="dialog-actions">
+          <button type="submit" value="cancel" class="dialog-btn" data-i18n="dialogCancel">Cancel</button>
+          <button type="submit" value="ok" class="dialog-btn primary" id="bookmark-dialog-confirm"></button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="newtab.js"></script>
   </body>

@@ -65,6 +65,8 @@ Click the gear icon at the bottom-right of the new tab page:
 - **Center bookmarks in bar** — center-align instead of left-aligning
 - **Hide labels** — icons-only bar: folder icon/emoji + caret for folders, favicon for links
 - **Folder emojis** — open the overlay and paste an emoji to replace any top-level folder's icon (clear it to restore the default)
+- **Glass tint** — slider under the Glass style, from clear to fully tinted (like the iOS 27 Liquid Glass setting); the clock digits are glass too
+- **Rename / delete bookmarks** — right-click any bookmark or folder in the bar; deletions ask for confirmation and folders show what's inside
 - **Show background image** — toggle Unsplash wallpaper on/off
 - **Show search field** — toggle the search input above the bookmarks bar
 - **Theme** — Auto / Light / Dark

@@ -1,12 +1,27 @@
 import { getPlatform, type BookmarkNode } from "@/platform";
 import { t } from "@/i18n";
-import { getFolderEmoji } from "@/settings";
+import { getFolderEmoji, getSettings } from "@/settings";
 import { renderTabGroups } from "@/tab-groups-bar";
 import { loadFaviconMap } from "@/favicon-cache";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 let topLevelNodes: BookmarkNode[] = [];
+
+// id → node for everything rendered this pass; lets the context menu resolve
+// the element it was opened on back to its bookmark.
+const nodeIndex = new Map<string, BookmarkNode>();
+
+export function getBookmarkNode(id: string): BookmarkNode | undefined {
+  return nodeIndex.get(id);
+}
+
+function indexTree(nodes: BookmarkNode[]): void {
+  for (const node of nodes) {
+    nodeIndex.set(node.id, node);
+    if (node.children) indexTree(node.children);
+  }
+}
 
 // origin → icon URL captured from open tabs; reloaded on each render.
 let faviconMap: Record<string, string> = {};
@@ -138,6 +153,7 @@ function createGlobeIcon(): SVGSVGElement {
 function createBookmarkLink(node: BookmarkNode): HTMLAnchorElement {
   const a = document.createElement("a");
   a.className = "bookmark-item";
+  a.dataset.bookmarkId = node.id;
   a.href = node.url!;
   a.title = `${node.title || node.url}\n${node.url}`;
 
@@ -187,6 +203,7 @@ function createDropdownEntry(node: BookmarkNode): HTMLLIElement {
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.className = "submenu-trigger";
+    trigger.dataset.bookmarkId = node.id;
     trigger.setAttribute("aria-haspopup", "true");
     trigger.setAttribute("aria-expanded", "false");
 
@@ -253,6 +270,7 @@ function createTopLevelFolder(node: BookmarkNode): HTMLDivElement {
 
   const button = document.createElement("button");
   button.className = "bookmark-item folder-button";
+  button.dataset.bookmarkId = node.id;
   button.title = node.title;
   button.setAttribute("aria-haspopup", "true");
   button.setAttribute("aria-expanded", "false");
@@ -393,10 +411,19 @@ export function closeAllDropdowns(): void {
   });
 }
 
+// With no bookmarks the bar itself is hidden (CSS keys off `.empty`, keeping
+// it visible if the tab-groups folder lives there) and a dismissable notice
+// explains why — once.
+function showEmptyBarNotice(empty: boolean): void {
+  const notice = document.getElementById("empty-bar-notice");
+  if (notice) notice.hidden = !empty || getSettings().emptyBarNoticeDismissed;
+}
+
 export async function renderBookmarks(): Promise<void> {
   const bar = document.getElementById("bookmarks-bar");
   if (!bar) return;
   bar.textContent = "";
+  nodeIndex.clear();
   try {
     const [toolbar, favicons] = await Promise.all([
       getPlatform().bookmarks.getToolbar(),
@@ -404,13 +431,13 @@ export async function renderBookmarks(): Promise<void> {
     ]);
     faviconMap = favicons;
     const items = toolbar.children || [];
+    bar.classList.toggle("empty", !items.length);
+    showEmptyBarNotice(!items.length);
     if (!items.length) {
-      const empty = document.createElement("span");
-      empty.className = "empty-state";
-      empty.textContent = t("emptyToolbar");
-      bar.append(empty);
+      void renderTabGroups();
       return;
     }
+    indexTree(items);
     topLevelNodes = sortFoldersFirst(items);
     for (const node of topLevelNodes) {
       if (isFolder(node)) {

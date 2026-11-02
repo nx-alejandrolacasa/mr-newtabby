@@ -44,6 +44,9 @@ export interface Platform {
     // or null when the browser exposes no extension-accessible favicon cache
     // (Firefox: `page-icon:` is chrome-privileged — Bugzilla 1315616).
     cachedFaviconUrl(pageUrl: string): string | null;
+    rename(id: string, title: string): Promise<void>;
+    remove(id: string): Promise<void>;
+    removeTree(id: string): Promise<void>;
   };
   storage: {
     get<K extends string>(keys: readonly K[] | Record<K, unknown>): Promise<Record<K, unknown>>;

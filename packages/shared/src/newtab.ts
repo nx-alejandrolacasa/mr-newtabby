@@ -9,6 +9,7 @@ import {
   applyBookmarksPosition,
   applyCenterWidget,
   applyClockSize,
+  applyGlassLevel,
   applyClassSettings,
   syncSettingsUi,
   setupSettingsPanel,
@@ -17,6 +18,8 @@ import {
   getSettings,
 } from "@/settings";
 import { setupFolderEmojiOverlay } from "@/folder-emojis";
+import { setupBookmarkActions } from "@/bookmark-actions";
+import { setupInk } from "@/ink";
 import { setupSearch } from "@/search";
 import { setupTabGroups, setupTabGroupsStorageListener } from "@/tab-groups-bar";
 
@@ -50,7 +53,10 @@ export async function startApp(platform: Platform): Promise<void> {
   setupSearch();
   applyCenterWidget();
   applyClockSize();
+  applyGlassLevel();
   setupBookmarksListeners();
+  setupBookmarkActions();
+  setupInk();
   setupBackoffStorageListener();
   setupFolderEmojiStorageListener();
   setupTabGroupsStorageListener();
