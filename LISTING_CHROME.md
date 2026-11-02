@@ -105,7 +105,7 @@ If we don't have these yet, skip them; they can be added in a later edit without
 
 ## Release notes
 
-> CWS shows version notes on the item's update. Paste the latest entry as plain text. Newest first.
+> The Chrome Web Store has no per-version release-notes field. The only place users can read it is the **Description** on the Store listing tab: append the latest entry there under a "What's new" heading (keep only the latest one or two), and save. Newest first below.
 
 ### v1.14.0
 
