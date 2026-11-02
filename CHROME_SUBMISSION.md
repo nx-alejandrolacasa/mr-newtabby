@@ -97,7 +97,7 @@ https://github.com/nx-alejandrolacasa/mr-newtabby/blob/main/PRIVACY.md
 ```
 Mr. Newtabby replaces the new tab page with the user's Bookmarks Bar laid out as a pill at the top, over an optional Unsplash wallpaper.
 
-About this version (1.13.0): new extension icon and a matching favicon on the new tab page. Functionality, permissions, and data handling are identical to 1.12.0. The store icon is rasterized from the SVG at build time by a small dependency-free script in the repo (packages/shared/src/build-helpers/icon-png.ts).
+About this version (1.14.0): adds a glass tint slider, a canvas-drawn clock, wallpaper-aware text colour, and rename/delete of bookmarks via a right-click menu with a confirmation dialog. Rename/delete use the existing "bookmarks" permission and only run on an explicit user action. The wallpaper image is the same images.unsplash.com URL as before, now requested with CORS so its pixels can be averaged locally for text contrast; nothing is sent anywhere. Fonts are bundled (no remote fonts). Permissions and hosts are identical to 1.13.0. The store icon is rasterized from the SVG at build time by a small dependency-free script in the repo (packages/shared/src/build-helpers/icon-png.ts).
 
 To test:
 1. Install the unpacked extension or the uploaded package.
@@ -129,5 +129,5 @@ Build notes:
 - [ ] All requested permissions have justifications
 - [ ] Screenshots uploaded (1280×800 or 640×400, at least one)
 - [ ] Store icon = 128×128 PNG (auto-uses `icons.128` from manifest, but the listing slot is separate — upload `packages/shared/assets/icons/icon.png` there too)
-- [ ] Package uploaded: `web-ext-artifacts/mr-newtabby-chrome-v1.13.0.zip`
+- [ ] Package uploaded: `web-ext-artifacts/mr-newtabby-chrome-v1.14.0.zip`
 - [ ] "Why are you requesting these permissions?" field non-empty for every permission

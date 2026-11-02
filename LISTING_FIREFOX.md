@@ -63,9 +63,15 @@ api.unsplash.com (when "Show background image" is enabled), used to
 fetch a random photo from Unsplash's curated wallpaper collection
 1053828.
 
-About this version (1.13.0): new add-on icon and a matching favicon on
-the new tab page. Functionality, permissions, and data handling are
-identical to 1.12.0.
+About this version (1.14.0): adds a glass tint slider, a canvas-drawn
+clock, wallpaper-aware text colour, and rename/delete of bookmarks via
+a right-click menu with a confirmation dialog. Rename/delete use the
+existing "bookmarks" permission and only run on an explicit user
+action. The wallpaper image is the same images.unsplash.com URL as
+before, now requested with CORS so its pixels can be averaged locally
+for text contrast; nothing is sent anywhere. Two fonts are bundled
+(Satoshi, and an OFL Shippori Antique B1 subset); no remote fonts.
+Permissions and hosts are identical to 1.13.0.
 
 Build: npm install && npm run build (esbuild monorepo; see README).
 The public Unsplash Access Key (Client-ID) is read from .env at build
@@ -117,6 +123,12 @@ maps. No other code generation or templating is involved.
 ## Release notes
 
 > Paste the latest entry into the version's "Release notes" / "What's new" field. Newest first.
+
+### v1.14.0
+
+```
+Glass, reworked. A Glass tint slider (seven stops, clear to tinted) sets how see-through the bar, menus and settings panel are, and the clock is now real frosted glass that shows the wallpaper through its digits. Text switches between light and dark depending on the wallpaper behind each surface. The bookmarks bar sizes to its bookmarks instead of spanning the window. Right-click any bookmark or folder to rename or delete it; deleting a folder tells you what is inside first. If your bookmarks toolbar is empty the bar stays hidden, with a one-time note explaining why. Settings are grouped from general to specific.
+```
 
 ### v1.13.0
 

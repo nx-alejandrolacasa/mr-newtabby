@@ -107,6 +107,12 @@ If we don't have these yet, skip them; they can be added in a later edit without
 
 > CWS shows version notes on the item's update. Paste the latest entry as plain text. Newest first.
 
+### v1.14.0
+
+```
+Glass, reworked. A Glass tint slider (seven stops, clear to tinted) sets how see-through the bar, menus and settings panel are, and the clock is now real frosted glass that shows the wallpaper through its digits. Text switches between light and dark depending on the wallpaper behind each surface. The bookmarks bar sizes to its bookmarks instead of spanning the window. Right-click any bookmark or folder to rename or delete it; deleting a folder tells you what is inside first. If your bookmarks toolbar is empty the bar stays hidden, with a one-time note explaining why. Settings are grouped from general to specific.
+```
+
 ### v1.13.0
 
 ```
