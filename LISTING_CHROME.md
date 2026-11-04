@@ -83,18 +83,17 @@ The extension itself ships translations for 7 locales (en, es, fr, it, de, ja, z
 
 CWS requires **exactly 1280×800** or **640×400**. At least one screenshot is required; up to five may be uploaded.
 
-Available in `packages/shared/assets/screenshots/` — all already **1280×800**, so they upload as-is (no resize or crop needed):
+Available in `packages/shared/assets/screenshots/` — all **1280×800** JPEG, so they upload as-is (no resize or crop needed). Captured at the middle glass tint (slider stop 3 of 0–6) over Sora Sagano's Mount Fuji photo (Unsplash `tlCzX-8iwx4`):
 
 | File | Size | What it shows |
 |---|---|---|
-| `1-glass_light.jpg` | 1280×800 | Glass style, light theme, bookmarks pill at top |
-| `2-glass_dark.jpg` | 1280×800 | Glass style, dark theme, bookmarks pill at top |
-| `3-classic.jpg` | 1280×800 | Classic style, bookmarks bar flush at bottom |
+| `1-glass_light.jpg` | 1280×800 | Glass style, light theme, bookmarks pill at top, glass clock |
+| `2-glass_dark.jpg` | 1280×800 | Glass style, dark theme |
+| `3-glass_menu.jpg` | 1280×800 | Glass style with a folder menu open (nested folder, favicons) |
 | `4-glass_bottom.jpg` | 1280×800 | Glass style, bookmarks bar anchored at the bottom |
+| `5-classic.jpg` | 1280×800 | Classic style, solid flush toolbar |
 
-Suggested additional shots to capture before submission (optional, max 5 total):
-- The **Tab groups** menu open in the bar — shows the headline v1.10.0 feature
-- Localized UI (Japanese or Spanish) — demonstrates the 7-language support
+The same five files serve the AMO listing (see `LISTING_FIREFOX.md`).
 
 ## Promotional images (optional but recommended)
 

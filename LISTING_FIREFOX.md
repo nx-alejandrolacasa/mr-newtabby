@@ -52,6 +52,10 @@ Photos courtesy of Unsplash.
 
 `bookmarks`, `new tab`, `wallpaper`, `unsplash`, `minimal`
 
+## Screenshots
+
+AMO accepts PNG or JPG, not animated, under 4 MB each; it stores a 2400×1800 "full" rendition and a 533×400 thumbnail, and Mozilla recommends uploading 1280×800 (1.6:1). The five 1280×800 JPEGs in `packages/shared/assets/screenshots/` (listed in `LISTING_CHROME.md`) upload as-is.
+
 ## Notes for reviewer
 
 > Paste into AMO's "Notes for reviewer" field on submission.
