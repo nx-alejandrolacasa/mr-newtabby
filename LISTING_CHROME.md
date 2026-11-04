@@ -106,6 +106,12 @@ If we don't have these yet, skip them; they can be added in a later edit without
 
 > The Chrome Web Store has no per-version release-notes field. The only place users can read it is the **Description** on the Store listing tab: append the latest entry there under a "What's new" heading (keep only the latest one or two), and save. Newest first below.
 
+### v1.14.1
+
+```
+Glass, polished. Surfaces now take their edge light and shadow from the macOS Dock: light caught on the top and bottom edges, a lighter drop shadow, and dark glass that brightens the wallpaper behind it instead of smoking it. Turning the background image off now keeps a colour drawn from the photo's mid-tones, and it survives reloads. New 3-hour wallpaper refresh option. The Groups menu is translated into all seven languages, and its permission notice no longer overflows the menu.
+```
+
 ### v1.14.0
 
 ```

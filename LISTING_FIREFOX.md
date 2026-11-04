@@ -63,7 +63,7 @@ AMO accepts PNG or JPG, not animated, under 4 MB each; it stores a 2400×1800 "f
 ```
 This extension reads bookmarks via the bookmarks API and renders the toolbar on the new tab page. The only network destination is api.unsplash.com (when "Show background image" is enabled), used to fetch a random photo from Unsplash's curated wallpaper collection 1053828.
 
-About this version (1.14.0): adds a glass tint slider, a canvas-drawn clock, wallpaper-aware text colour, and rename/delete of bookmarks via a right-click menu with a confirmation dialog. Rename/delete use the existing "bookmarks" permission and only run on an explicit user action. The wallpaper image is the same images.unsplash.com URL as before, now requested with CORS so its pixels can be averaged locally for text contrast; nothing is sent anywhere. Two fonts are bundled (Satoshi, and an OFL Shippori Antique B1 subset); no remote fonts. Permissions and hosts are identical to 1.13.0.
+About this version (1.14.1): a visual refinement of the glass surfaces, a 3-hour refresh option, translations for the tab-groups menu, and a fix so the background colour shown when the wallpaper is off survives reloads. That colour is averaged locally from the same images.unsplash.com image as before (already CORS-loaded in 1.14.0) and kept in extension storage and localStorage; nothing is sent anywhere. Permissions and hosts are identical to 1.14.0.
 
 Build: npm install && npm run build (esbuild monorepo; see README). The public Unsplash Access Key (Client-ID) is read from .env at build time and embedded into the bundle, per Unsplash's API guidelines for client-side apps — it is the only value injected into the source.
 
@@ -98,6 +98,12 @@ maps. No other code generation or templating is involved.
 ## Release notes
 
 > Paste the latest entry into the version's "Release notes" / "What's new" field. Newest first.
+
+### v1.14.1
+
+```
+Glass, polished. Surfaces now take their edge light and shadow from the macOS Dock: light caught on the top and bottom edges, a lighter drop shadow, and dark glass that brightens the wallpaper behind it instead of smoking it. Turning the background image off now keeps a colour drawn from the photo's mid-tones, and it survives reloads. New 3-hour wallpaper refresh option. The Groups menu is translated into all seven languages, and its permission notice no longer overflows the menu.
+```
 
 ### v1.14.0
 
