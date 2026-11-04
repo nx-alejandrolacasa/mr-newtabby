@@ -125,7 +125,7 @@ function createPermissionRow(): HTMLLIElement {
   const li = document.createElement("li");
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "bookmark-item";
+  btn.className = "bookmark-item tab-group-open tab-group-grant";
   btn.textContent = t("tabGroupsGrantPermission");
   btn.addEventListener("click", (e) => {
     e.stopPropagation();

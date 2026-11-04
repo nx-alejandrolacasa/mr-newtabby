@@ -1,4 +1,5 @@
 import { getPlatform } from "@/platform";
+import { loadImage, midtoneColor } from "@/wallpaper";
 
 // Tabliss's curated wallpaper collection — ~545 hand-picked, consistent high quality.
 const UNSPLASH_COLLECTION_ID = "1053828";
@@ -65,6 +66,7 @@ interface CachedBackground {
   authorUrl: string;
   photoUrl: string;
   fetchedAt: number;
+  averageColor?: string;
 }
 
 interface UnsplashBackoff {
@@ -72,15 +74,6 @@ interface UnsplashBackoff {
   nextAttemptAt: number;
   lastErrorMessage?: string;
   lastErrorAt?: number;
-}
-
-function preloadImage(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(url);
-    img.onerror = () => reject(new Error(`Failed to load ${url}`));
-    img.src = url;
-  });
 }
 
 async function fetchUnsplashRandomPhoto(): Promise<UnsplashPhoto> {
@@ -116,10 +109,16 @@ async function triggerUnsplashDownload(downloadLocation: string | undefined): Pr
   }
 }
 
+// Mirrored to localStorage so theme-init can paint it before the first frame.
+function setBackgroundColor(color: string): void {
+  document.body.style.backgroundColor = color;
+  localStorage.setItem("backgroundColor", color);
+}
+
 function applyBackground(photo: (CachedBackground & { imageUrl: string }) | null): void {
   const body = document.body;
   if (!photo || !photo.imageUrl) return;
-  if (photo.color) body.style.backgroundColor = photo.color;
+  setBackgroundColor(photo.averageColor ?? photo.color);
   body.style.backgroundImage = `url("${photo.imageUrl}")`;
   body.classList.add("has-background");
 
@@ -138,6 +137,21 @@ function applyBackground(photo: (CachedBackground & { imageUrl: string }) | null
   }
 }
 
+// Backgrounds cached before the midtone colour existed get it computed and
+// persisted the first time it is needed.
+async function averageColorOf(cached: CachedBackground): Promise<string> {
+  if (cached.averageColor) return cached.averageColor;
+  const storage = getPlatform().storage;
+  const img = await loadImage(buildImageUrl(cached.rawUrl));
+  const averageColor = midtoneColor(img) ?? cached.color;
+  const { cachedBackground } = await storage.get(["cachedBackground"]);
+  const current = cachedBackground as CachedBackground | undefined;
+  if (current?.rawUrl === cached.rawUrl) {
+    await storage.set({ cachedBackground: { ...current, averageColor } });
+  }
+  return averageColor;
+}
+
 function clearBackground(): void {
   const body = document.body;
   body.classList.remove("has-background");
@@ -151,6 +165,9 @@ export async function loadBackground(
 ): Promise<void> {
   if (!opts.enabled) {
     clearBackground();
+    const { cachedBackground } = await getPlatform().storage.get(["cachedBackground"]);
+    const cached = cachedBackground as CachedBackground | undefined;
+    if (cached?.rawUrl) setBackgroundColor(await averageColorOf(cached));
     return;
   }
 
@@ -191,10 +208,11 @@ export async function loadBackground(
     try {
       const fresh = await fetchUnsplashRandomPhoto();
       const imageUrl = buildImageUrl(fresh.rawUrl);
-      await preloadImage(imageUrl);
+      const img = await loadImage(imageUrl);
       const cached: CachedBackground = {
         rawUrl: fresh.rawUrl,
         color: fresh.color,
+        averageColor: midtoneColor(img) ?? fresh.color,
         authorName: fresh.authorName,
         authorUrl: fresh.authorUrl,
         photoUrl: fresh.photoUrl,

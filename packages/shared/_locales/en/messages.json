@@ -35,6 +35,7 @@
   "bookmarksPositionBottom": { "message": "Bottom" },
   "refreshIntervalLabel": { "message": "Refresh background every" },
   "interval1h": { "message": "1 hour" },
+  "interval3h": { "message": "3 hours" },
   "interval6h": { "message": "6 hours" },
   "interval12h": { "message": "12 hours" },
   "interval24h": { "message": "24 hours" },

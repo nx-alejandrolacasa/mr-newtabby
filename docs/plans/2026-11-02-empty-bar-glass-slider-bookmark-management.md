@@ -25,6 +25,16 @@
 
 > **✓ One slider, CSS does the mapping** — no JS colour math; `calc()` in `rgb()` alpha and `blur()` is supported by the minimum browsers the manifests target.
 
+## Later decisions
+
+> **2026-11-04 · Cupertino dock glass replaces the flat edge treatment.** Compared against the Cupertino UI dock (`macos.css` in its registry): the glass tokens now use its values. Blur is a fixed 30px; saturation is 180% in light and 100% in dark; dark glass adds `brightness(1.15)` so it lifts the wallpaper instead of smoking it. Edges are its inset stack (1px light lines top and bottom, 1px dark rim on the sides, soft inner glow; cool bluish-white highlights in dark) and the outer shadow is lighter (8px by 24px). The slider now drives tint opacity only, and at the clear end the surface is the Cupertino dock exactly. This supersedes item 5 above: the lit inset rim that was dropped as too busy is back in this calmer form. The ink compositor's alphas follow the new tint formulas.
+
+> **2026-11-04 · Background colour survives reload when the image is off.** Reported by a colleague: disabling the wallpaper showed the photo's colour until the next load, then fell back to theme grey. The colour is now a midtone mean of the image (64×40 sample; pixels under 15% or over 85% lightness are skipped, plain mean if under 5% survive), computed when a photo is fetched and stored on `cachedBackground.averageColor` (lazily for older caches). The disabled path applies it on every load, and it is mirrored to localStorage so theme-init paints it before the first frame, as it already does for theme and style.
+
+> **2026-11-04 · 3-hour refresh interval.** Added between 1 and 6 hours, all locales.
+
+> **2026-11-04 · Permission row wraps.** The "permission missing" row in the Groups menu used the bar's pill class and inherited its no-wrap, so it overflowed the menu. It now uses the group rows' full-width style and wraps.
+
 ## Verification
 
 - `npm run typecheck` and `npm run build` pass for Firefox and Chrome.

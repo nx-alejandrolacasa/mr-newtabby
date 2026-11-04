@@ -1,4 +1,4 @@
-import { getWallpaper, coverRect, onBackdropChange } from "@/wallpaper";
+import { getWallpaper, coverRect, onBackdropChange, type Rgb } from "@/wallpaper";
 
 // Picks light or dark text ("ink") per glass surface from what actually sits
 // behind it: the wallpaper, downsampled to a few thousand pixels, averaged
@@ -51,8 +51,6 @@ function sampleViewport(img: HTMLImageElement): ImageData | null {
   return sample;
 }
 
-type Rgb = [number, number, number];
-
 function meanColorUnder(data: ImageData, rect: DOMRect): Rgb {
   const x0 = Math.max(0, Math.floor((rect.left / innerWidth) * SAMPLE_W));
   const x1 = Math.min(SAMPLE_W, Math.ceil((rect.right / innerWidth) * SAMPLE_W));
@@ -81,7 +79,7 @@ function bodyColor(): Rgb {
 // per sRGB channel (as the browser blends it), same alphas as
 // --glass-bg-strong in the stylesheet.
 function surfaceLuminance(backdrop: Rgb, level: number, darkTheme: boolean): number {
-  const alpha = darkTheme ? 0.2 + 0.6 * level : 0.18 + 0.62 * level;
+  const alpha = darkTheme ? 0.8 * level : 0.32 + 0.48 * level;
   const tint: Rgb = darkTheme ? [28, 27, 34] : [255, 255, 255];
   const mix = (i: number) => alpha * tint[i]! + (1 - alpha) * backdrop[i]!;
   return luminance(mix(0), mix(1), mix(2));

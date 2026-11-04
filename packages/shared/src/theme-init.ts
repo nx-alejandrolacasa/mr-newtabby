@@ -25,5 +25,7 @@
     var gl = parseInt(localStorage.getItem("glassLevel") || "3", 10);
     if (isNaN(gl) || gl < 0 || gl > 6) gl = 3;
     document.documentElement.style.setProperty("--glass-level", String(gl / 6));
+    var bg = localStorage.getItem("backgroundColor");
+    if (bg) document.documentElement.style.setProperty("--bg-wallpaper", bg);
   } catch (e) {}
 })();
