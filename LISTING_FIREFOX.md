@@ -79,7 +79,7 @@ No analytics, telemetry, or crash reporting. No remote code. No content scripts.
 > AMO asks "Do you use any of the following in your extension?" — answer **Yes** (esbuild bundles multiple files into one). Upload a source zip generated from the release tag: `git archive --format=zip -o web-ext-artifacts/mr-newtabby-<version>-source.zip v<version>`. Paste the following into the source-submission notes field:
 
 ```
-Requirements: Node.js 22.x (ships with npm 10). Any OS.
+Requirements: Node.js 24.x (ships with npm 11). Any OS.
 
 1. Unzip the source archive and cd into it.
 2. npm install

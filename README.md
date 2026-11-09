@@ -117,7 +117,7 @@ icon's glyph without the background, dark or white to follow the browser's
 light or dark mode through a `prefers-color-scheme` media query inside the
 SVG. Chrome's store PNG is rendered from the SVG design at build time
 (`packages/shared/src/build-helpers/icon-png.ts`);
-`node --experimental-strip-types scripts/generate-icon.mjs` writes the same
+`node scripts/generate-icon.mjs` writes the same
 PNG to `packages/shared/assets/icons/icon.png` for the store listing.
 
 ## Credits

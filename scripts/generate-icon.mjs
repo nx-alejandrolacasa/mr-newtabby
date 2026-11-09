@@ -2,7 +2,7 @@
 // build emits into dist/) to packages/shared/assets/icons/icon.png, for the
 // store listing upload.
 //
-// Run via:  node --experimental-strip-types scripts/generate-icon.mjs
+// Run via:  node scripts/generate-icon.mjs
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

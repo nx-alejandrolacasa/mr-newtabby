@@ -1,7 +1,7 @@
 // packages/firefox/build.ts — esbuild + static copy + manifest version stamp.
 //
-// Run via:  npx tsx build.ts            (one-shot build)
-//           npx tsx build.ts --watch    (rebuild on file change)
+// Run via:  node build.ts            (one-shot build)
+//           node build.ts --watch    (rebuild on file change)
 //
 // Output: ./dist/, a fully-self-contained Firefox-loadable extension dir.
 import { build, context, type BuildOptions } from "esbuild";

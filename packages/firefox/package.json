@@ -3,10 +3,11 @@
   "version": "1.14.1",
   "private": true,
   "license": "MIT",
+  "type": "module",
   "description": "Firefox new-tab extension that floats your bookmarks toolbar at the top with a rotating Unsplash wallpaper.",
   "scripts": {
-    "build": "tsx build.ts",
-    "dev": "tsx build.ts && (tsx build.ts --watch & web-ext run --source-dir=dist)",
+    "build": "node build.ts",
+    "dev": "node build.ts && (node build.ts --watch & web-ext run --source-dir=dist)",
     "lint": "web-ext lint --source-dir=dist",
     "package": "web-ext build"
   },
