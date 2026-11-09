@@ -93,6 +93,11 @@ function pickInk(surface: number, previous: string | undefined): "light" | "dark
   return surface > 0.18 ? "dark" : "light";
 }
 
+// Rewriting an unchanged value still fires the backdrop observer on <html>.
+function setInk(el: HTMLElement, ink: string): void {
+  if (el.dataset.ink !== ink) el.dataset.ink = ink;
+}
+
 export function updateInk(): void {
   const root = document.documentElement;
   const elements = SURFACES.map((id) => document.getElementById(id)).filter(
@@ -113,11 +118,11 @@ export function updateInk(): void {
     return pickInk(surfaceLuminance(backdrop, level, darkTheme), previous);
   };
 
-  root.dataset.ink = inkFor(new DOMRect(0, 0, innerWidth, innerHeight), root.dataset.ink);
+  setInk(root, inkFor(new DOMRect(0, 0, innerWidth, innerHeight), root.dataset.ink));
   for (const el of elements) {
     const rect = el.getBoundingClientRect();
     if (!rect.width || !rect.height) continue;
-    el.dataset.ink = inkFor(rect, el.dataset.ink);
+    setInk(el, inkFor(rect, el.dataset.ink));
   }
 }
 
