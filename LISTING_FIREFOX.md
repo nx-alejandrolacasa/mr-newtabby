@@ -63,7 +63,7 @@ AMO accepts PNG or JPG, not animated, under 4 MB each; it stores a 2400×1800 "f
 ```
 This extension reads bookmarks via the bookmarks API and renders the toolbar on the new tab page. The only network destination is api.unsplash.com (when "Show background image" is enabled), used to fetch a random photo from Unsplash's curated wallpaper collection 1053828.
 
-About this version (1.14.1): a visual refinement of the glass surfaces, a 3-hour refresh option, translations for the tab-groups menu, and a fix so the background colour shown when the wallpaper is off survives reloads. That colour is averaged locally from the same images.unsplash.com image as before (already CORS-loaded in 1.14.0) and kept in extension storage and localStorage; nothing is sent anywhere. Permissions and hosts are identical to 1.14.0.
+About this version (1.15.0): adds drag and drop to reorder bookmarks and move them between the toolbar and its folders. Moves use bookmarks.move under the existing "bookmarks" permission and only run when the user drops an item. Also fixes menus closing while renaming or Cmd/Ctrl-clicking, and a redraw loop that kept the CPU busy. Permissions and hosts are identical to 1.14.1.
 
 Build: npm install && npm run build (esbuild monorepo; see README). The public Unsplash Access Key (Client-ID) is read from .env at build time and embedded into the bundle, per Unsplash's API guidelines for client-side apps — it is the only value injected into the source.
 
@@ -98,6 +98,12 @@ maps. No other code generation or templating is involved.
 ## Release notes
 
 > Paste the latest entry into the version's "Release notes" / "What's new" field. Newest first.
+
+### v1.15.0
+
+```
+Drag and drop. Pick up any bookmark or folder in the bar, a folder or the overflow menu and move it: the other items slide apart to make room, and holding over a folder springs it open so you can drop into it or one of its subfolders. Escape puts it back. Menus now stay out of your way: right-clicking an item in a submenu keeps it open while you rename or delete, Cmd/Ctrl-click opens a link in a background tab without closing the menu, and clicking anywhere else closes the right-click menu. The page is also much lighter on the CPU when a wallpaper is shown.
+```
 
 ### v1.14.1
 

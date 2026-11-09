@@ -106,6 +106,12 @@ If we don't have these yet, skip them; they can be added in a later edit without
 
 > The Chrome Web Store has no per-version release-notes field. The only place users can read it is the **Description** on the Store listing tab: append the latest entry there under a "What's new" heading (keep only the latest one or two), and save. Newest first below.
 
+### v1.15.0
+
+```
+Drag and drop. Pick up any bookmark or folder in the bar, a folder or the overflow menu and move it: the other items slide apart to make room, and holding over a folder springs it open so you can drop into it or one of its subfolders. Escape puts it back. Menus now stay out of your way: right-clicking an item in a submenu keeps it open while you rename or delete, Cmd/Ctrl-click opens a link in a background tab without closing the menu, and clicking anywhere else closes the right-click menu. The page is also much lighter on the CPU when a wallpaper is shown.
+```
+
 ### v1.14.1
 
 ```
