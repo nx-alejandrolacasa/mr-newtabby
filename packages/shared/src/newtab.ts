@@ -1,6 +1,12 @@
 import { setPlatform, type Platform } from "@/platform";
 import { applyI18n } from "@/i18n";
-import { renderBookmarks, setupBookmarksListeners, closeAllDropdowns } from "@/bookmarks";
+import {
+  renderBookmarks,
+  setupBookmarksListeners,
+  closeAllDropdowns,
+  opensInBackground,
+} from "@/bookmarks";
+import { setupBookmarkDrag } from "@/bookmark-drag";
 import { loadBackground, updateBackgroundErrorVisibility } from "@/unsplash";
 import {
   loadSettings,
@@ -26,9 +32,12 @@ import { setupTabGroups, setupTabGroupsStorageListener } from "@/tab-groups-bar"
 export async function startApp(platform: Platform): Promise<void> {
   setPlatform(platform);
 
-  document.addEventListener("click", () => closeAllDropdowns());
+  document.addEventListener("click", (e) => {
+    if (!opensInBackground(e)) closeAllDropdowns();
+  });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
+    // Escape in a dialog only closes the dialog.
+    if (e.key === "Escape" && !document.querySelector("dialog[open]")) {
       closeAllDropdowns();
       const panel = document.getElementById("settings-panel");
       const btn = document.getElementById("settings-btn");
@@ -56,6 +65,7 @@ export async function startApp(platform: Platform): Promise<void> {
   applyGlassLevel();
   setupBookmarksListeners();
   setupBookmarkActions();
+  setupBookmarkDrag();
   setupInk();
   setupBackoffStorageListener();
   setupFolderEmojiStorageListener();

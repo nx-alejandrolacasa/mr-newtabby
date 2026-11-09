@@ -9,6 +9,8 @@ export interface BookmarkNode {
   id: string;
   title: string;
   url?: string;
+  parentId?: string;
+  index?: number;
   type?: "bookmark" | "folder" | "separator";
   children?: BookmarkNode[];
 }
@@ -47,6 +49,8 @@ export interface Platform {
     rename(id: string, title: string): Promise<void>;
     remove(id: string): Promise<void>;
     removeTree(id: string): Promise<void>;
+    // `index` is the position the node ends up at; omitted appends.
+    move(id: string, parentId: string, index?: number): Promise<void>;
   };
   storage: {
     get<K extends string>(keys: readonly K[] | Record<K, unknown>): Promise<Record<K, unknown>>;

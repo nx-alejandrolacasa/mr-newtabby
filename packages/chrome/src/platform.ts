@@ -53,6 +53,17 @@ export const platform: Platform = {
     async removeTree(id) {
       await chrome.bookmarks.removeTree(id);
     },
+    async move(id, parentId, index) {
+      if (index === undefined) {
+        await chrome.bookmarks.move(id, { parentId });
+        return;
+      }
+      // Chrome reads the index before taking the node out of its folder, so a
+      // move further down the same folder has to aim one past the target.
+      const [node] = await chrome.bookmarks.get(id);
+      const movesDownSameFolder = node?.parentId === parentId && node.index! < index;
+      await chrome.bookmarks.move(id, { parentId, index: movesDownSameFolder ? index + 1 : index });
+    },
   },
   storage: {
     get(keys) {

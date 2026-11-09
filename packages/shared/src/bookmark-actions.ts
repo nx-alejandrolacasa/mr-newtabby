@@ -1,5 +1,5 @@
 import { getPlatform, type BookmarkNode } from "@/platform";
-import { getBookmarkNode, isFolder, closeAllDropdowns } from "@/bookmarks";
+import { getBookmarkNode, isFolder, closeAllDropdowns, pinOpenPath } from "@/bookmarks";
 import { t } from "@/i18n";
 import { clearFolderEmoji, dismissEmptyBarNotice } from "@/settings";
 
@@ -115,8 +115,11 @@ export function setupBookmarkActions(): void {
   if (!bar || !menu || !renameBtn || !deleteBtn) return;
 
   let target: BookmarkNode | null = null;
+  let targetEl: HTMLElement | null = null;
   const hideMenu = () => {
     menu.hidden = true;
+    targetEl?.classList.remove("menu-target");
+    targetEl = null;
   };
 
   bar.addEventListener("contextmenu", (e) => {
@@ -125,8 +128,12 @@ export function setupBookmarkActions(): void {
     if (!el || !node) return;
     e.preventDefault();
     e.stopPropagation();
+    hideMenu();
     target = node;
-    closeAllDropdowns();
+    targetEl = el;
+    el.classList.add("menu-target");
+    closeAllDropdowns(el);
+    pinOpenPath(el);
     // Keyboard-invoked (Shift+F10 / Menu key) reports 0,0: anchor to the item.
     const rect = el.getBoundingClientRect();
     const fromKeyboard = e.clientX === 0 && e.clientY === 0;
@@ -134,16 +141,27 @@ export function setupBookmarkActions(): void {
     renameBtn.focus();
   });
 
-  renameBtn.addEventListener("click", () => {
+  // The dropdown the item lives in stays open behind the menu and dialog.
+  menu.addEventListener("click", (e) => e.stopPropagation());
+  document.getElementById("bookmark-dialog")?.addEventListener("click", (e) => e.stopPropagation());
+  const runOnTarget = (action: (node: BookmarkNode) => Promise<void>) => {
+    const highlighted = targetEl;
+    targetEl = null;
     hideMenu();
-    if (target) void renameBookmark(target).catch(console.error);
-  });
-  deleteBtn.addEventListener("click", () => {
-    hideMenu();
-    if (target) void deleteBookmark(target).catch(console.error);
-  });
+    if (!target) return;
+    void action(target)
+      .catch(console.error)
+      .finally(() => highlighted?.classList.remove("menu-target"));
+  };
+  renameBtn.addEventListener("click", () => runOnTarget(renameBookmark));
+  deleteBtn.addEventListener("click", () => runOnTarget(deleteBookmark));
 
-  document.addEventListener("click", hideMenu);
+  // Capture phase: folder and submenu buttons stop their clicks from bubbling.
+  const hideOnOutsidePress = (e: Event) => {
+    if (!menu.contains(e.target as Node)) hideMenu();
+  };
+  document.addEventListener("pointerdown", hideOnOutsidePress, true);
+  document.addEventListener("click", hideOnOutsidePress, true);
   document.addEventListener("contextmenu", hideMenu);
   window.addEventListener("resize", hideMenu);
   document.addEventListener("keydown", (e) => {

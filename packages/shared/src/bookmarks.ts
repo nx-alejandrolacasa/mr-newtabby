@@ -7,6 +7,11 @@ import { loadFaviconMap } from "@/favicon-cache";
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 let topLevelNodes: BookmarkNode[] = [];
+let toolbarId = "";
+
+export function getToolbarId(): string {
+  return toolbarId;
+}
 
 // id → node for everything rendered this pass; lets the context menu resolve
 // the element it was opened on back to its bookmark.
@@ -150,7 +155,7 @@ function createGlobeIcon(): SVGSVGElement {
   return svg;
 }
 
-function createBookmarkLink(node: BookmarkNode): HTMLAnchorElement {
+export function createBookmarkLink(node: BookmarkNode): HTMLAnchorElement {
   const a = document.createElement("a");
   a.className = "bookmark-item";
   a.dataset.bookmarkId = node.id;
@@ -194,8 +199,9 @@ function createBookmarkLink(node: BookmarkNode): HTMLAnchorElement {
   return a;
 }
 
-function createDropdownEntry(node: BookmarkNode): HTMLLIElement {
+export function createDropdownEntry(node: BookmarkNode): HTMLLIElement {
   const li = document.createElement("li");
+  li.dataset.itemId = node.id;
 
   if (isFolder(node)) {
     li.classList.add("has-submenu");
@@ -220,22 +226,12 @@ function createDropdownEntry(node: BookmarkNode): HTMLLIElement {
 
     const submenu = document.createElement("ul");
     submenu.className = "folder-dropdown submenu";
-    populateDropdown(submenu, node.children || []);
+    populateDropdown(submenu, node.children || [], node.id);
 
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
-      const isOpen = li.classList.toggle("submenu-open");
-      trigger.setAttribute("aria-expanded", String(isOpen));
-      if (li.parentElement) {
-        Array.from(li.parentElement.children).forEach((sib) => {
-          if (sib !== li && sib.classList.contains("submenu-open")) {
-            sib.classList.remove("submenu-open");
-            const sibTrigger = sib.querySelector(".submenu-trigger");
-            if (sibTrigger) sibTrigger.setAttribute("aria-expanded", "false");
-          }
-        });
-      }
-      if (isOpen) adjustDropdownPosition(submenu, true);
+      if (li.classList.contains("submenu-open")) closeSubmenu(li);
+      else openFolder(trigger);
     });
 
     li.addEventListener("mouseenter", () => {
@@ -250,8 +246,9 @@ function createDropdownEntry(node: BookmarkNode): HTMLLIElement {
   return li;
 }
 
-function populateDropdown(ul: HTMLUListElement, children: BookmarkNode[]): void {
+function populateDropdown(ul: HTMLUListElement, children: BookmarkNode[], parentId: string): void {
   ul.textContent = "";
+  ul.dataset.parentId = parentId;
   if (!children.length) {
     const empty = document.createElement("li");
     empty.className = "empty-state";
@@ -264,9 +261,10 @@ function populateDropdown(ul: HTMLUListElement, children: BookmarkNode[]): void 
   }
 }
 
-function createTopLevelFolder(node: BookmarkNode): HTMLDivElement {
+export function createTopLevelFolder(node: BookmarkNode): HTMLDivElement {
   const wrapper = document.createElement("div");
   wrapper.className = "bookmark-folder";
+  wrapper.dataset.itemId = node.id;
 
   const button = document.createElement("button");
   button.className = "bookmark-item folder-button";
@@ -284,16 +282,13 @@ function createTopLevelFolder(node: BookmarkNode): HTMLDivElement {
 
   const dropdown = document.createElement("ul");
   dropdown.className = "folder-dropdown";
-  populateDropdown(dropdown, node.children || []);
+  populateDropdown(dropdown, node.children || [], node.id);
 
   button.addEventListener("click", (e) => {
     e.stopPropagation();
     const wasOpen = wrapper.classList.contains("open");
     closeAllDropdowns();
-    if (!wasOpen) {
-      wrapper.classList.add("open");
-      button.setAttribute("aria-expanded", "true");
-    }
+    if (!wasOpen) openFolder(button);
   });
 
   wrapper.append(button, dropdown);
@@ -322,15 +317,30 @@ function createOverflowChevron(): HTMLDivElement {
     e.stopPropagation();
     const wasOpen = wrapper.classList.contains("open");
     closeAllDropdowns();
-    if (!wasOpen) {
-      wrapper.classList.add("open");
-      button.setAttribute("aria-expanded", "true");
-      adjustDropdownPosition(dropdown, false);
-    }
+    if (!wasOpen) openFolder(button);
   });
 
   wrapper.append(button, dropdown);
   return wrapper;
+}
+
+// While a drag is in flight the bar's DOM is the drag's working state, so
+// re-renders and overflow reflows wait until it is released.
+let renderHeld = false;
+let renderPending = false;
+
+export function holdRendering(): void {
+  renderHeld = true;
+}
+
+export function releaseRendering(): void {
+  renderHeld = false;
+  if (renderPending) {
+    renderPending = false;
+    void renderBookmarks();
+  } else {
+    scheduleReflow();
+  }
 }
 
 let reflowScheduled = false;
@@ -344,6 +354,7 @@ export function scheduleReflow(): void {
 }
 
 function reflowBookmarksBar(): void {
+  if (renderHeld) return;
   const bar = document.getElementById("bookmarks-bar");
   if (!bar) return;
   const overflow = bar.querySelector<HTMLElement>(".bookmark-overflow");
@@ -384,7 +395,7 @@ function reflowBookmarksBar(): void {
   }
 
   const dropdown = overflow.querySelector<HTMLUListElement>(".folder-dropdown");
-  if (dropdown) populateDropdown(dropdown, topLevelNodes.slice(firstHidden));
+  if (dropdown) populateDropdown(dropdown, topLevelNodes.slice(firstHidden), toolbarId);
 }
 
 function adjustDropdownPosition(dropdown: HTMLElement | null, isSubmenu = false): void {
@@ -398,17 +409,83 @@ function adjustDropdownPosition(dropdown: HTMLElement | null, isSubmenu = false)
   }
 }
 
-export function closeAllDropdowns(): void {
-  document.querySelectorAll(".bookmark-folder.open").forEach((el) => {
-    el.classList.remove("open");
-    const btn = el.querySelector(".folder-button");
-    if (btn) btn.setAttribute("aria-expanded", "false");
-  });
-  document.querySelectorAll(".has-submenu.submenu-open").forEach((el) => {
-    el.classList.remove("submenu-open");
-    const trigger = el.querySelector(".submenu-trigger");
-    if (trigger) trigger.setAttribute("aria-expanded", "false");
-  });
+function closeSubmenu(li: Element): void {
+  li.classList.remove("submenu-open");
+  li.querySelector(":scope > .submenu-trigger")?.setAttribute("aria-expanded", "false");
+}
+
+export function closeFolder(wrapper: Element): void {
+  if (wrapper.matches("li.has-submenu")) closeSubmenu(wrapper);
+  wrapper.classList.remove("open");
+  wrapper.querySelector(":scope > .folder-button")?.setAttribute("aria-expanded", "false");
+  wrapper.querySelectorAll(".has-submenu.submenu-open").forEach(closeSubmenu);
+}
+
+// Folders containing `keep` stay open, so a menu can close everything except
+// the path to the item the user is acting on.
+export function closeAllDropdowns(keep?: Element): void {
+  document
+    .querySelectorAll(".bookmark-folder.open, .has-submenu.submenu-open")
+    .forEach((wrapper) => {
+      if (!keep || !wrapper.contains(keep)) closeFolder(wrapper);
+    });
+}
+
+export function openFolder(trigger: HTMLElement): void {
+  const submenuLi = trigger.matches(".submenu-trigger") ? trigger.parentElement : null;
+  if (submenuLi) {
+    for (const sibling of submenuLi.parentElement?.children ?? []) {
+      if (sibling !== submenuLi && sibling.classList.contains("submenu-open")) closeFolder(sibling);
+    }
+    submenuLi.classList.add("submenu-open");
+    adjustDropdownPosition(submenuLi.querySelector<HTMLElement>(":scope > .submenu"), true);
+  } else {
+    const wrapper = trigger.closest(".bookmark-folder");
+    if (!wrapper) return;
+    document.querySelectorAll(".bookmark-folder.open").forEach((other) => {
+      if (other !== wrapper) closeFolder(other);
+    });
+    wrapper.classList.add("open");
+    if (wrapper.classList.contains("bookmark-overflow")) {
+      adjustDropdownPosition(wrapper.querySelector<HTMLElement>(":scope > .folder-dropdown"), false);
+    }
+  }
+  trigger.setAttribute("aria-expanded", "true");
+}
+
+// Hover-opened submenus close as soon as the pointer leaves them; pinning
+// keeps every submenu around an item open while a menu or drag needs it.
+export function pinOpenPath(item: Element): void {
+  let li = item.closest("[data-item-id]")?.parentElement?.closest("li.has-submenu");
+  while (li) {
+    li.classList.add("submenu-open");
+    li.querySelector(":scope > .submenu-trigger")?.setAttribute("aria-expanded", "true");
+    li = li.parentElement?.closest("li.has-submenu");
+  }
+}
+
+// A modifier-click opens the link in a background tab, so the menu it came
+// from stays open for the next one.
+export function opensInBackground(e: MouseEvent): boolean {
+  return (e.metaKey || e.ctrlKey) && !!(e.target as Element).closest?.(".folder-dropdown a[href]");
+}
+
+function openFolderIds(bar: HTMLElement): string[] {
+  return Array.from(
+    bar.querySelectorAll<HTMLElement>(
+      ".bookmark-folder.open > .folder-button[data-bookmark-id], .has-submenu.submenu-open > .submenu-trigger[data-bookmark-id]"
+    ),
+    (trigger) => trigger.dataset.bookmarkId!
+  );
+}
+
+function reopenFolders(bar: HTMLElement, ids: string[]): void {
+  for (const id of ids) {
+    const trigger = bar.querySelector<HTMLElement>(
+      `.folder-button[data-bookmark-id="${CSS.escape(id)}"], .submenu-trigger[data-bookmark-id="${CSS.escape(id)}"]`
+    );
+    if (trigger) openFolder(trigger);
+  }
 }
 
 // With no bookmarks the bar itself is hidden (CSS keys off `.empty`, keeping
@@ -422,14 +499,27 @@ function showEmptyBarNotice(empty: boolean): void {
 export async function renderBookmarks(): Promise<void> {
   const bar = document.getElementById("bookmarks-bar");
   if (!bar) return;
-  bar.textContent = "";
-  nodeIndex.clear();
+  if (renderHeld) {
+    renderPending = true;
+    return;
+  }
   try {
     const [toolbar, favicons] = await Promise.all([
       getPlatform().bookmarks.getToolbar(),
       loadFaviconMap(),
     ]);
+    if (renderHeld) {
+      renderPending = true;
+      return;
+    }
+    // Everything below is synchronous, so overlapping renders can't interleave.
+    const reopenIds = openFolderIds(bar);
+    const overflowWasOpen = !!bar.querySelector(".bookmark-overflow.open");
+    bar.textContent = "";
+    nodeIndex.clear();
     faviconMap = favicons;
+    toolbarId = toolbar.id;
+    bar.dataset.parentId = toolbar.id;
     const items = toolbar.children || [];
     bar.classList.toggle("empty", !items.length);
     showEmptyBarNotice(!items.length);
@@ -437,19 +527,26 @@ export async function renderBookmarks(): Promise<void> {
       void renderTabGroups();
       return;
     }
+    nodeIndex.set(toolbar.id, toolbar);
     indexTree(items);
     topLevelNodes = sortFoldersFirst(items);
     for (const node of topLevelNodes) {
       if (isFolder(node)) {
         bar.append(createTopLevelFolder(node));
       } else if (node.url) {
-        bar.append(createBookmarkLink(node));
+        const link = createBookmarkLink(node);
+        link.dataset.itemId = node.id;
+        bar.append(link);
       }
     }
-    bar.append(createOverflowChevron());
-    scheduleReflow();
+    const overflow = createOverflowChevron();
+    bar.append(overflow);
+    reflowBookmarksBar();
+    if (overflowWasOpen) openFolder(overflow.querySelector<HTMLElement>(".folder-button")!);
+    reopenFolders(bar, reopenIds);
     void renderTabGroups();
   } catch (err) {
+    bar.textContent = "";
     const msg = document.createElement("span");
     msg.className = "empty-state";
     msg.textContent = t("loadError");

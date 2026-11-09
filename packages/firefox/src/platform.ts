@@ -48,6 +48,9 @@ export const platform: Platform = {
     async removeTree(id) {
       await browser.bookmarks.removeTree(id);
     },
+    async move(id, parentId, index) {
+      await browser.bookmarks.move(id, { parentId, index });
+    },
   },
   storage: {
     get(keys) {
