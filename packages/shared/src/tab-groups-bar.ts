@@ -1,6 +1,7 @@
 import { getPlatform } from "@/platform";
 import { t } from "@/i18n";
 import { getSettings, dismissTabGroupsTip } from "@/settings";
+import { scheduleReflow } from "@/bookmarks";
 import {
   getClosedGroups,
   reopenGroup,
@@ -172,35 +173,7 @@ function createTip(dismissible: boolean): HTMLLIElement {
 }
 
 // Render (or remove) the single tab-groups bar item. No-op-safe to call anytime.
-export async function renderTabGroups(): Promise<void> {
-  const bar = document.getElementById("bookmarks-bar");
-  if (!bar) return;
-
-  // querySelectorAll (not querySelector) so any duplicate from a prior race is
-  // also cleared.
-  const removeExisting = () =>
-    bar.querySelectorAll(".tab-groups-folder").forEach((el) => el.remove());
-
-  if (!getSettings().tabGroupsEnabled || !getPlatform().tabGroups) {
-    removeExisting();
-    return;
-  }
-
-  const perms = getPlatform().permissions;
-  const granted = perms ? await perms.contains([...TAB_GROUP_PERMISSIONS]) : true;
-  const closed = granted ? await getClosedGroups() : [];
-  const tipDismissed = getSettings().tabGroupsTipDismissed;
-
-  // Preserve the open state across a re-render: a background resync writing
-  // storage shouldn't blink the menu shut while the user has it open.
-  const wasOpen = !!bar.querySelector(".tab-groups-folder.open");
-
-  // Remove AFTER the await and immediately before the synchronous build+prepend
-  // below (no await in between). Overlapping renders — e.g. the reopen click
-  // handler and the storage-change listener firing together — would otherwise
-  // each pass an up-front removal and then both prepend, duplicating the item.
-  removeExisting();
-
+function prependTabGroupsFolder(bar: HTMLElement): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "bookmark-folder tab-groups-folder";
 
@@ -218,14 +191,6 @@ export async function renderTabGroups(): Promise<void> {
 
   const dropdown = document.createElement("ul");
   dropdown.className = "folder-dropdown tab-groups-dropdown";
-  if (!granted) {
-    dropdown.append(createPermissionRow());
-  } else {
-    for (const snap of closed) dropdown.append(createGroupRow(snap));
-    // The note is the empty state when there are no groups (always shown, not
-    // dismissible there), and a dismissible tip once groups exist.
-    if (!closed.length || !tipDismissed) dropdown.append(createTip(closed.length > 0));
-  }
 
   button.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -237,14 +202,40 @@ export async function renderTabGroups(): Promise<void> {
     }
   });
 
-  if (wasOpen) {
-    wrapper.classList.add("open");
-    button.setAttribute("aria-expanded", "true");
-  }
-
   wrapper.append(button, dropdown);
   // Insert as the first bar item (groups lead, before folders/links).
   bar.prepend(wrapper);
+  scheduleReflow();
+  return wrapper;
+}
+
+// The folder goes in before any await, so the bar has its final width on its
+// first frame; only the menu contents wait for storage.
+export async function renderTabGroups(): Promise<void> {
+  const bar = document.getElementById("bookmarks-bar");
+  if (!bar) return;
+
+  if (!getSettings().tabGroupsEnabled || !getPlatform().tabGroups) {
+    bar.querySelector(".tab-groups-folder")?.remove();
+    return;
+  }
+
+  const folder = bar.querySelector<HTMLElement>(".tab-groups-folder") ?? prependTabGroupsFolder(bar);
+  const dropdown = folder.querySelector(".tab-groups-dropdown")!;
+
+  const perms = getPlatform().permissions;
+  const granted = perms ? await perms.contains([...TAB_GROUP_PERMISSIONS]) : true;
+  const closed = granted ? await getClosedGroups() : [];
+  const tipDismissed = getSettings().tabGroupsTipDismissed;
+
+  if (!granted) {
+    dropdown.replaceChildren(createPermissionRow());
+    return;
+  }
+  dropdown.replaceChildren(...closed.map(createGroupRow));
+  // The note is the empty state when there are no groups (always shown, not
+  // dismissible there), and a dismissible tip once groups exist.
+  if (!closed.length || !tipDismissed) dropdown.append(createTip(closed.length > 0));
 }
 
 // Page-load backstop: snapshot whatever groups are open right now, then render.

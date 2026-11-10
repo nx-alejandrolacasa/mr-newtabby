@@ -43,12 +43,32 @@ export function getSettings(): Readonly<Settings> {
   return settings;
 }
 
-export async function loadSettings(): Promise<void> {
-  const stored = await getPlatform().storage.get(SETTINGS_DEFAULTS as any);
-  settings = { ...SETTINGS_DEFAULTS, ...(stored as Partial<Settings>) };
-  if (!Number.isInteger(settings.glassLevel) || settings.glassLevel < 0 || settings.glassLevel > 6) {
-    settings.glassLevel = SETTINGS_DEFAULTS.glassLevel;
+// Extension storage takes hundreds of milliseconds to answer a new tab's first
+// read, so startup uses this localStorage copy and only falls back to storage
+// when it is missing.
+const MIRROR_KEY = "settings";
+
+function readMirror(): Partial<Settings> | null {
+  try {
+    return JSON.parse(localStorage.getItem(MIRROR_KEY) ?? "null");
+  } catch {
+    return null;
   }
+}
+
+// Merges rather than overwrites, so a tab holding stale settings in memory
+// cannot undo a change saved from another tab.
+function mirror(values: Partial<Settings>): void {
+  try {
+    localStorage.setItem(MIRROR_KEY, JSON.stringify({ ...(readMirror() ?? settings), ...values }));
+  } catch {
+    /* ignore */
+  }
+}
+
+async function readStoredSettings(): Promise<Settings> {
+  const stored = await getPlatform().storage.get(SETTINGS_DEFAULTS as any);
+  const result = { ...SETTINGS_DEFAULTS, ...(stored as Partial<Settings>) };
 
   // Migrate the legacy `showSearch` boolean → `centerWidget`. The array-form
   // read distinguishes "never stored" from the default, so an explicit
@@ -57,14 +77,29 @@ export async function loadSettings(): Promise<void> {
   const raw = await getPlatform().storage.get(["centerWidget", "showSearch"]);
   if ((raw as { centerWidget?: unknown }).centerWidget === undefined) {
     const showSearch = (raw as { showSearch?: boolean }).showSearch;
-    if (showSearch === false) settings.centerWidget = "none";
-    else if (showSearch === true) settings.centerWidget = "search";
+    if (showSearch === false) result.centerWidget = "none";
+    else if (showSearch === true) result.centerWidget = "search";
+  }
+  mirror(result);
+  return result;
+}
+
+export async function loadSettings(): Promise<void> {
+  const mirrored = readMirror();
+  settings = mirrored ? { ...SETTINGS_DEFAULTS, ...mirrored } : await readStoredSettings();
+  if (!Number.isInteger(settings.glassLevel) || settings.glassLevel < 0 || settings.glassLevel > 6) {
+    settings.glassLevel = SETTINGS_DEFAULTS.glassLevel;
   }
 }
 
+async function persist(values: Partial<Settings>): Promise<void> {
+  Object.assign(settings, values);
+  mirror(values);
+  await getPlatform().storage.set(values);
+}
+
 async function saveSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
-  settings[key] = value;
-  await getPlatform().storage.set({ [key]: value });
+  await persist({ [key]: value });
 }
 
 function effectiveTheme(): "light" | "dark" {
@@ -82,17 +117,14 @@ export function getFolderEmoji(id: string): string | undefined {
 }
 
 export async function setFolderEmoji(id: string, emoji: string): Promise<void> {
-  const next = { ...settings.folderEmojis, [id]: emoji };
-  settings.folderEmojis = next;
-  await getPlatform().storage.set({ folderEmojis: next });
+  await persist({ folderEmojis: { ...settings.folderEmojis, [id]: emoji } });
 }
 
 export async function clearFolderEmoji(id: string): Promise<void> {
   if (!(id in settings.folderEmojis)) return;
   const next = { ...settings.folderEmojis };
   delete next[id];
-  settings.folderEmojis = next;
-  await getPlatform().storage.set({ folderEmojis: next });
+  await persist({ folderEmojis: next });
 }
 
 export function applyTheme(): void {
@@ -159,13 +191,11 @@ export async function applyTabGroupsEnabled(): Promise<void> {
 
 // Persist that the user dismissed the groups-menu tip so it stays hidden.
 export async function dismissTabGroupsTip(): Promise<void> {
-  settings.tabGroupsTipDismissed = true;
-  await getPlatform().storage.set({ tabGroupsTipDismissed: true });
+  await persist({ tabGroupsTipDismissed: true });
 }
 
 export async function dismissEmptyBarNotice(): Promise<void> {
-  settings.emptyBarNoticeDismissed = true;
-  await getPlatform().storage.set({ emptyBarNoticeDismissed: true });
+  await persist({ emptyBarNoticeDismissed: true });
 }
 
 // Single place that writes the --clock-scale custom property (and mirrors it to

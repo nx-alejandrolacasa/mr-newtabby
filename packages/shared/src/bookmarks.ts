@@ -2,7 +2,7 @@ import { getPlatform, type BookmarkNode } from "@/platform";
 import { t } from "@/i18n";
 import { getFolderEmoji, getSettings } from "@/settings";
 import { renderTabGroups } from "@/tab-groups-bar";
-import { loadFaviconMap } from "@/favicon-cache";
+import { loadFaviconMap, originOf } from "@/favicon-cache";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -28,8 +28,40 @@ function indexTree(nodes: BookmarkNode[]): void {
   }
 }
 
-// origin → icon URL captured from open tabs; reloaded on each render.
-let faviconMap: Record<string, string> = {};
+// origin → icon URL captured from open tabs, for the bookmarked origins only.
+// Copied to localStorage so the bar renders without waiting on extension
+// storage, which is slow to answer a new tab's first read.
+const ICONS_KEY = "bookmarkIcons";
+let faviconMap: Record<string, string> = readIconMirror();
+
+function readIconMirror(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(ICONS_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+async function refreshFavicons(): Promise<void> {
+  const all = await loadFaviconMap();
+  const used: Record<string, string> = {};
+  for (const node of nodeIndex.values()) {
+    const origin = node.url && originOf(node.url);
+    if (origin && all[origin]) used[origin] = all[origin];
+  }
+  const origins = Object.keys(used);
+  const unchanged =
+    origins.length === Object.keys(faviconMap).length &&
+    origins.every((origin) => faviconMap[origin] === used[origin]);
+  if (unchanged) return;
+  faviconMap = used;
+  try {
+    localStorage.setItem(ICONS_KEY, JSON.stringify(used));
+  } catch {
+    /* ignore */
+  }
+  void renderBookmarks();
+}
 
 export function isFolder(node: BookmarkNode): boolean {
   return node.type === "folder" || (!node.url && Array.isArray(node.children));
@@ -353,6 +385,15 @@ export function scheduleReflow(): void {
   });
 }
 
+// A fit-content bar (centred bookmarks) is only as wide as its items made it;
+// stretching it lets its max-width say how much room there is.
+function widestClientWidth(bar: HTMLElement): number {
+  bar.style.width = "100vw";
+  const width = bar.clientWidth;
+  bar.style.removeProperty("width");
+  return width;
+}
+
 function reflowBookmarksBar(): void {
   if (renderHeld) return;
   const bar = document.getElementById("bookmarks-bar");
@@ -360,7 +401,10 @@ function reflowBookmarksBar(): void {
   const overflow = bar.querySelector<HTMLElement>(".bookmark-overflow");
   if (!overflow) return;
 
-  const items = Array.from(bar.children).filter((el): el is HTMLElement => el !== overflow) as HTMLElement[];
+  const groupsFolder = bar.querySelector<HTMLElement>(":scope > .tab-groups-folder");
+  const items = Array.from(bar.children).filter(
+    (el): el is HTMLElement => el !== overflow && el !== groupsFolder
+  );
   for (const item of items) item.style.removeProperty("display");
   overflow.hidden = false;
 
@@ -371,9 +415,9 @@ function reflowBookmarksBar(): void {
   const padR = parseFloat(barStyle.paddingRight) || 0;
   const gap = parseFloat(barStyle.gap) || 0;
   const overflowWidth = overflow.getBoundingClientRect().width;
-  const available = bar.clientWidth - padL - padR - overflowWidth - gap - 4;
+  const available = widestClientWidth(bar) - padL - padR - overflowWidth - gap - 4;
 
-  let used = 0;
+  let used = groupsFolder?.getBoundingClientRect().width ?? 0;
   let firstHidden = -1;
   for (let i = 0; i < items.length; i++) {
     const itemWidth = items[i]!.getBoundingClientRect().width;
@@ -504,10 +548,7 @@ export async function renderBookmarks(): Promise<void> {
     return;
   }
   try {
-    const [toolbar, favicons] = await Promise.all([
-      getPlatform().bookmarks.getToolbar(),
-      loadFaviconMap(),
-    ]);
+    const toolbar = await getPlatform().bookmarks.getToolbar();
     if (renderHeld) {
       renderPending = true;
       return;
@@ -517,7 +558,6 @@ export async function renderBookmarks(): Promise<void> {
     const overflowWasOpen = !!bar.querySelector(".bookmark-overflow.open");
     bar.textContent = "";
     nodeIndex.clear();
-    faviconMap = favicons;
     toolbarId = toolbar.id;
     bar.dataset.parentId = toolbar.id;
     const items = toolbar.children || [];
@@ -545,6 +585,7 @@ export async function renderBookmarks(): Promise<void> {
     if (overflowWasOpen) openFolder(overflow.querySelector<HTMLElement>(".folder-button")!);
     reopenFolders(bar, reopenIds);
     void renderTabGroups();
+    void refreshFavicons();
   } catch (err) {
     bar.textContent = "";
     const msg = document.createElement("span");
@@ -552,6 +593,8 @@ export async function renderBookmarks(): Promise<void> {
     msg.textContent = t("loadError");
     bar.append(msg);
     console.error(err);
+  } finally {
+    bar.classList.add("loaded");
   }
 }
 

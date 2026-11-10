@@ -24,7 +24,7 @@ const MAX_ICON_LENGTH = 100 * 1024;
 // Coalesce bursts of tab updates into a single write.
 const DEBOUNCE_MS = 250;
 
-function originOf(pageUrl: string): string | null {
+export function originOf(pageUrl: string): string | null {
   try {
     const u = new URL(pageUrl);
     if (u.protocol !== "http:" && u.protocol !== "https:") return null;

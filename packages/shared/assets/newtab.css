@@ -116,7 +116,7 @@
   color: var(--fg);
 }
 
-/* ---- Classic style: solid surfaces, no blur, anchored bar ---- */
+/* ---- Classic style: solid surfaces, no blur ---- */
 :root[data-style="classic"] {
   --glass-bg-strong: #ffffff;
   --glass-control-bg: #f5f5f5;
@@ -140,25 +140,11 @@
   --toggle-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* In classic style, the bar anchors flush to the top with a bottom border.
-   Classic has no blur, so the surface goes back on the element and the glass
-   ::before layer is dropped. */
 :root[data-style="classic"] #bookmarks-bar {
-  width: auto;
-  min-width: 0;
-  max-width: none;
-  margin: 0;
-  border-radius: 0;
-  border-bottom: 1px solid var(--glass-border);
-  background: var(--glass-bg-strong);
-  box-shadow: none;
+  padding-inline: 8px;
 }
 
-:root[data-style="classic"] #bookmarks-bar::before {
-  display: none;
-}
-
-:root[data-style="classic"] #bg-attribution {
+:root[data-style="classic"] :is(#bookmarks-bar, #bg-attribution) {
   border-radius: 6px;
 }
 
@@ -171,14 +157,6 @@
   right: 16px;
   margin: 0 auto;
   z-index: 80;
-}
-
-:root[data-style="classic"][data-bookmarks-position="bottom"] #bookmarks-bar {
-  bottom: 0;
-  left: 0;
-  right: 0;
-  border-bottom: none;
-  border-top: 1px solid var(--glass-border);
 }
 
 :root[data-bookmarks-position="bottom"] #bg-attribution {
@@ -226,7 +204,7 @@ body {
   align-items: center;
   gap: 2px;
   min-height: 40px;
-  width: fit-content;
+  width: 100%;
   min-width: min(1024px, calc(100% - 32px));
   max-width: calc(100% - 32px);
   margin: 16px auto;
@@ -256,7 +234,38 @@ body {
 }
 
 body.centered #bookmarks-bar {
+  width: fit-content;
   justify-content: center;
+}
+
+#bookmarks-bar:not(.loaded) {
+  visibility: hidden;
+}
+
+/* The bar, attribution and settings button slide in from the nearest edge.
+   Transform only: it runs on the compositor, so startup work cannot make it
+   stutter, and unlike opacity or clip-path it keeps the glass blur. */
+#bookmarks-bar.loaded,
+:root[data-bookmarks-position="bottom"] :is(#bg-attribution, #settings-btn) {
+  animation: drop-in 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-bookmarks-position="bottom"] #bookmarks-bar.loaded,
+#bg-attribution,
+#settings-btn {
+  animation: rise-in 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes drop-in {
+  from {
+    transform: translateY(calc(-100% - 16px));
+  }
+}
+
+@keyframes rise-in {
+  from {
+    transform: translateY(calc(100% + 16px));
+  }
 }
 
 /* No bookmarks: drop the bar entirely unless the tab-groups folder needs it. */
