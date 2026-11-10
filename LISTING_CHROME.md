@@ -106,6 +106,12 @@ If we don't have these yet, skip them; they can be added in a later edit without
 
 > The Chrome Web Store has no per-version release-notes field. The only place users can read it is the **Description** on the Store listing tab: append the latest entry there under a "What's new" heading (keep only the latest one or two), and save. Newest first below.
 
+### v1.16.0
+
+```
+Faster new tabs. The wallpaper, clock and bookmarks now show up right away instead of after a short wait. The next wallpaper downloads ahead of time and fades in over the old one when it changes, and the bookmarks bar, photo credit and settings button slide in from the edges. In the classic style the bar now floats like the rest of the page. The bar spans the full width with bookmarks on the left, and "Center bookmarks in bar" shrinks it to fit them. Also fixes the last bookmark dropping into the overflow menu when there was room for it, and the overflow menu listing the wrong bookmarks while the tab groups folder is shown.
+```
+
 ### v1.15.0
 
 ```

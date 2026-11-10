@@ -63,7 +63,7 @@ AMO accepts PNG or JPG, not animated, under 4 MB each; it stores a 2400×1800 "f
 ```
 This extension reads bookmarks via the bookmarks API and renders the toolbar on the new tab page. The only network destination is api.unsplash.com (when "Show background image" is enabled), used to fetch a random photo from Unsplash's curated wallpaper collection 1053828.
 
-About this version (1.15.0): adds drag and drop to reorder bookmarks and move them between the toolbar and its folders. Moves use bookmarks.move under the existing "bookmarks" permission and only run when the user drops an item. Also fixes menus closing while renaming or Cmd/Ctrl-clicking, and a redraw loop that kept the CPU busy. Permissions and hosts are identical to 1.14.1.
+About this version (1.16.0): makes the new tab faster and smoother. The next Unsplash photo is now fetched ahead of time from the same api.unsplash.com endpoint, so there is still one API request per wallpaper change, and the download ping is still sent when a photo is first shown. Open tabs use the Web Locks API so only one of them calls Unsplash at a time. To render before extension storage answers, the page keeps copies in localStorage of its settings, the current and next wallpaper's image URL and colour, and the favicons of bookmarked sites, taken from the existing favicon cache. Nothing new is sent anywhere. Permissions and hosts are identical to 1.15.0.
 
 Build: npm install && npm run build (esbuild monorepo; see README). The public Unsplash Access Key (Client-ID) is read from .env at build time and embedded into the bundle, per Unsplash's API guidelines for client-side apps — it is the only value injected into the source.
 
@@ -98,6 +98,12 @@ maps. No other code generation or templating is involved.
 ## Release notes
 
 > Paste the latest entry into the version's "Release notes" / "What's new" field. Newest first.
+
+### v1.16.0
+
+```
+Faster new tabs. The wallpaper, clock and bookmarks now show up right away instead of after a short wait. The next wallpaper downloads ahead of time and fades in over the old one when it changes, and the bookmarks bar, photo credit and settings button slide in from the edges. In the classic style the bar now floats like the rest of the page. The bar spans the full width with bookmarks on the left, and "Center bookmarks in bar" shrinks it to fit them. Also fixes the last bookmark dropping into the overflow menu when there was room for it, and the overflow menu listing the wrong bookmarks while the tab groups folder is shown.
+```
 
 ### v1.15.0
 

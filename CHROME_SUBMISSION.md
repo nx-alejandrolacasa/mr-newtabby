@@ -97,7 +97,7 @@ https://github.com/nx-alejandrolacasa/mr-newtabby/blob/main/PRIVACY.md
 ```
 Mr. Newtabby replaces the new tab page with the user's Bookmarks Bar laid out as a pill at the top, over an optional Unsplash wallpaper.
 
-About this version (1.15.0): adds drag and drop to reorder bookmarks and move them between the toolbar and its folders. Moves use bookmarks.move under the existing "bookmarks" permission and only run when the user drops an item. Also fixes menus closing while renaming or Cmd/Ctrl-clicking, and a redraw loop that kept the CPU busy. Permissions and hosts are identical to 1.14.1. The store icon is rasterized from the SVG at build time by a small dependency-free script in the repo (packages/shared/src/build-helpers/icon-png.ts).
+About this version (1.16.0): makes the new tab faster and smoother. The next Unsplash photo is now fetched ahead of time from the same api.unsplash.com endpoint, so there is still one API request per wallpaper change, and the download ping is still sent when a photo is first shown. Open tabs use the Web Locks API so only one of them calls Unsplash at a time. To render before extension storage answers, the page keeps copies in localStorage of its settings, the current and next wallpaper's image URL and colour, and the favicons of bookmarked sites, taken from the existing favicon cache. Nothing new is sent anywhere. Permissions and hosts are identical to 1.15.0. The store icon is rasterized from the SVG at build time by a small dependency-free script in the repo (packages/shared/src/build-helpers/icon-png.ts).
 
 To test:
 1. Install the unpacked extension or the uploaded package.
@@ -129,5 +129,5 @@ Build notes:
 - [ ] All requested permissions have justifications
 - [ ] Screenshots uploaded (1280×800 or 640×400, at least one)
 - [ ] Store icon = 128×128 PNG (auto-uses `icons.128` from manifest, but the listing slot is separate — upload `packages/shared/assets/icons/icon.png` there too)
-- [ ] Package uploaded: `web-ext-artifacts/mr-newtabby-chrome-v1.15.0.zip`
+- [ ] Package uploaded: `web-ext-artifacts/mr-newtabby-chrome-v1.16.0.zip`
 - [ ] "Why are you requesting these permissions?" field non-empty for every permission
