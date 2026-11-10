@@ -1,5 +1,10 @@
 import { getPlatform } from "@/platform";
-import { loadImage, midtoneColor } from "@/wallpaper";
+import {
+  loadImage,
+  midtoneColor,
+  showWallpaper,
+  isShowingWallpaper,
+} from "@/wallpaper";
 
 // Tabliss's curated wallpaper collection — ~545 hand-picked, consistent high quality.
 const UNSPLASH_COLLECTION_ID = "1053828";
@@ -8,6 +13,15 @@ const UNSPLASH_COLLECTION_ID = "1053828";
 // failure (30s → 1m → 2m → 4m → 8m → 16m → 30m).
 const BACKOFF_BASE_MS = 30 * 1000;
 const BACKOFF_MAX_MS = 30 * 60 * 1000;
+const NO_BACKOFF: UnsplashBackoff = { failures: 0, nextAttemptAt: 0 };
+// A hung request would hold the wallpaper lock for every tab.
+const FETCH_TIMEOUT_MS = 15 * 1000;
+
+// Held while a tab talks to Unsplash or promotes the preloaded photo, so
+// several tabs opening at once make one API call, not one each.
+const WALLPAPER_LOCK = "mr-newtabby-wallpaper";
+
+const ROTATION_KEYS = ["nextBackgroundColor", "nextWallpaperUrl", "rotateAt"] as const;
 
 // Per Unsplash API guidelines, every link back to unsplash.com must include UTM
 // params. The `utm_source` should match the application name registered at
@@ -45,9 +59,14 @@ function targetImageWidth(): number {
   return Math.max(1920, Math.min(snapped, 3840));
 }
 
-function buildImageUrl(rawUrl: string): string {
-  const w = targetImageWidth();
-  return `${rawUrl}&w=${w}&q=85`;
+function buildImageUrl(rawUrl: string, width: number): string {
+  return `${rawUrl}&w=${width}&q=85`;
+}
+
+// Reuses the width the photo was downloaded at when it is enough for this
+// screen, so the HTTP cache hits; a bigger screen fetches its own size.
+function imageUrlFor(photo: CachedBackground): string {
+  return buildImageUrl(photo.rawUrl, Math.max(targetImageWidth(), photo.imageWidth ?? 0));
 }
 
 interface UnsplashPhoto {
@@ -67,6 +86,8 @@ interface CachedBackground {
   photoUrl: string;
   fetchedAt: number;
   averageColor?: string;
+  downloadLocation?: string;
+  imageWidth?: number;
 }
 
 interface UnsplashBackoff {
@@ -84,6 +105,7 @@ async function fetchUnsplashRandomPhoto(): Promise<UnsplashPhoto> {
 
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Client-ID ${__UNSPLASH_KEY__}` },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Unsplash API ${res.status}`);
   const photo = await res.json();
@@ -110,31 +132,55 @@ async function triggerUnsplashDownload(downloadLocation: string | undefined): Pr
 }
 
 // Mirrored to localStorage so theme-init can paint it before the first frame.
+let appliedColor = "";
 function setBackgroundColor(color: string): void {
+  if (color === appliedColor) return;
+  appliedColor = color;
   document.body.style.backgroundColor = color;
   localStorage.setItem("backgroundColor", color);
 }
 
-function applyBackground(photo: (CachedBackground & { imageUrl: string }) | null): void {
-  const body = document.body;
-  if (!photo || !photo.imageUrl) return;
-  setBackgroundColor(photo.averageColor ?? photo.color);
-  body.style.backgroundImage = `url("${photo.imageUrl}")`;
-  body.classList.add("has-background");
-
+function showAttribution(photo: CachedBackground | null): void {
   const attr = document.getElementById("bg-attribution");
   const photoLink = document.getElementById("bg-photo-link") as HTMLAnchorElement | null;
   const author = document.getElementById("bg-author") as HTMLAnchorElement | null;
   const unsplashLink = document.getElementById("bg-unsplash-link") as HTMLAnchorElement | null;
-  if (photo.authorName && photo.authorUrl && photoLink && author && unsplashLink && attr) {
+  if (!attr) return;
+  if (photo?.authorName && photo.authorUrl && photoLink && author && unsplashLink) {
     photoLink.href = photo.photoUrl || withUtm(UNSPLASH_HOME);
     author.textContent = photo.authorName;
     author.href = photo.authorUrl;
     unsplashLink.href = withUtm(UNSPLASH_HOME);
     attr.hidden = false;
-  } else if (attr) {
+  } else {
     attr.hidden = true;
   }
+}
+
+// Shows the photo once its image is decoded; a newer apply in the meantime
+// wins. Resolves to false only when the image could not be loaded.
+let applyToken = 0;
+async function applyBackground(
+  photo: CachedBackground,
+  loaded?: HTMLImageElement
+): Promise<boolean> {
+  const token = ++applyToken;
+  const url = loaded?.src ?? imageUrlFor(photo);
+  if (!isShowingWallpaper(url)) {
+    let img = loaded;
+    try {
+      img ??= await loadImage(url);
+    } catch (err) {
+      console.warn("Wallpaper failed to load", err);
+      return false;
+    }
+    if (token !== applyToken) return true;
+    showWallpaper(img);
+  }
+  setBackgroundColor(photo.averageColor ?? photo.color);
+  localStorage.setItem("wallpaperUrl", url);
+  showAttribution(photo);
+  return true;
 }
 
 // Backgrounds cached before the midtone colour existed get it computed and
@@ -142,7 +188,7 @@ function applyBackground(photo: (CachedBackground & { imageUrl: string }) | null
 async function averageColorOf(cached: CachedBackground): Promise<string> {
   if (cached.averageColor) return cached.averageColor;
   const storage = getPlatform().storage;
-  const img = await loadImage(buildImageUrl(cached.rawUrl));
+  const img = await loadImage(imageUrlFor(cached));
   const averageColor = midtoneColor(img) ?? cached.color;
   const { cachedBackground } = await storage.get(["cachedBackground"]);
   const current = cachedBackground as CachedBackground | undefined;
@@ -152,100 +198,187 @@ async function averageColorOf(cached: CachedBackground): Promise<string> {
   return averageColor;
 }
 
-function clearBackground(): void {
-  const body = document.body;
-  body.classList.remove("has-background");
-  body.style.backgroundImage = "";
-  const attr = document.getElementById("bg-attribution");
-  if (attr) attr.hidden = true;
+// theme-init paints the next photo's colour and starts its download once the
+// rotation is due, so the tab that rotates opens on the right colour.
+function rememberRotation(next: CachedBackground, rotateAt: number): void {
+  localStorage.setItem("nextBackgroundColor", next.averageColor ?? next.color);
+  localStorage.setItem("nextWallpaperUrl", imageUrlFor(next));
+  localStorage.setItem("rotateAt", String(rotateAt));
 }
 
-export async function loadBackground(
-  opts: { force?: boolean; enabled: boolean; intervalHours: number }
-): Promise<void> {
-  if (!opts.enabled) {
-    clearBackground();
-    const { cachedBackground } = await getPlatform().storage.get(["cachedBackground"]);
-    const cached = cachedBackground as CachedBackground | undefined;
-    if (cached?.rawUrl) setBackgroundColor(await averageColorOf(cached));
-    return;
-  }
+function forgetRotation(): void {
+  for (const key of ROTATION_KEYS) localStorage.removeItem(key);
+}
 
-  const stored = await getPlatform().storage.get(["cachedBackground", "unsplashBackoff"]);
-  const cachedBackground = stored.cachedBackground as CachedBackground | undefined;
-  const backoff = (stored.unsplashBackoff as UnsplashBackoff | undefined) ?? {
-    failures: 0,
-    nextAttemptAt: 0,
+function clearBackground(): void {
+  applyToken++;
+  showWallpaper(null);
+  showAttribution(null);
+  localStorage.removeItem("wallpaperUrl");
+  forgetRotation();
+}
+
+async function fetchPhoto(): Promise<{ photo: CachedBackground; img: HTMLImageElement }> {
+  const fresh = await fetchUnsplashRandomPhoto();
+  const imageWidth = targetImageWidth();
+  const img = await loadImage(buildImageUrl(fresh.rawUrl, imageWidth));
+  const photo: CachedBackground = {
+    rawUrl: fresh.rawUrl,
+    color: fresh.color,
+    averageColor: midtoneColor(img) ?? fresh.color,
+    authorName: fresh.authorName,
+    authorUrl: fresh.authorUrl,
+    photoUrl: fresh.photoUrl,
+    downloadLocation: fresh.downloadLocation,
+    imageWidth,
+    fetchedAt: Date.now(),
   };
+  return { photo, img };
+}
 
-  const intervalMs = (opts.intervalHours || 6) * 60 * 60 * 1000;
-  const isExpired =
-    !cachedBackground ||
-    !cachedBackground.rawUrl ||
-    !cachedBackground.fetchedAt ||
-    Date.now() - cachedBackground.fetchedAt > intervalMs;
+type BackoffKey = "unsplashBackoff" | "preloadBackoff";
 
-  if (cachedBackground && cachedBackground.rawUrl) {
-    applyBackground({
-      ...cachedBackground,
-      imageUrl: buildImageUrl(cachedBackground.rawUrl),
-    });
-  }
+async function recordFailure(key: BackoffKey, backoff: UnsplashBackoff, err: unknown): Promise<void> {
+  const failures = backoff.failures + 1;
+  const delay = backoffDelayMs(failures);
+  await getPlatform().storage.set({
+    [key]: {
+      failures,
+      nextAttemptAt: Date.now() + delay,
+      lastErrorMessage: String((err as Error)?.message || err),
+      lastErrorAt: Date.now(),
+    } satisfies UnsplashBackoff,
+  });
+  console.warn(
+    `Unsplash fetch failed (${key}, attempt ${failures}); next attempt in ${Math.round(delay / 1000)}s`,
+    err
+  );
+}
 
-  if (!opts.force && !isExpired) return;
-
+function inBackoff(backoff: UnsplashBackoff): boolean {
   const now = Date.now();
   if (now < backoff.nextAttemptAt) {
     const waitS = Math.ceil((backoff.nextAttemptAt - now) / 1000);
     console.warn(
       `Unsplash backoff active (${backoff.failures} consecutive failures); next attempt in ${waitS}s`
     );
-    if (!cachedBackground?.rawUrl) clearBackground();
+    return true;
+  }
+  return false;
+}
+
+// Runs `task` unless another tab already holds the lock.
+async function withUnsplashLock(task: () => Promise<void>): Promise<void> {
+  await navigator.locks.request(WALLPAPER_LOCK, { ifAvailable: true }, async (lock) => {
+    if (lock) await task();
+  });
+}
+
+function whenIdle(): Promise<void> {
+  return new Promise((resolve) => requestIdleCallback(() => resolve(), { timeout: 5000 }));
+}
+
+// Picks and downloads the photo after `current` in idle time, so the rotation
+// can happen with no request on the critical path. Failures back off on their
+// own key: the wallpaper on screen is fine, so no error is shown.
+async function preloadNext(current: CachedBackground, rotateAt: number): Promise<void> {
+  if (!hasUnsplashKey()) return;
+  await whenIdle();
+  const storage = getPlatform().storage;
+  await withUnsplashLock(async () => {
+    const stored = await storage.get(["cachedBackground", "nextBackground", "preloadBackoff"]);
+    const latest = stored.cachedBackground as CachedBackground | undefined;
+    if (latest?.rawUrl !== current.rawUrl) return;
+    const existing = stored.nextBackground as CachedBackground | undefined;
+    if (existing?.rawUrl && existing.rawUrl !== current.rawUrl) {
+      rememberRotation(existing, rotateAt);
+      return;
+    }
+    const backoff = (stored.preloadBackoff as UnsplashBackoff | undefined) ?? NO_BACKOFF;
+    if (inBackoff(backoff)) return;
+    try {
+      const { photo } = await fetchPhoto();
+      await storage.set({ nextBackground: photo, preloadBackoff: NO_BACKOFF });
+      rememberRotation(photo, rotateAt);
+    } catch (err) {
+      await recordFailure("preloadBackoff", backoff, err);
+    }
+  });
+}
+
+// Every tab that rotates shows the photo; only the first one saves it and
+// sends Unsplash's download ping.
+async function persistPromotion(photo: CachedBackground): Promise<void> {
+  const storage = getPlatform().storage;
+  await navigator.locks.request(WALLPAPER_LOCK, async () => {
+    const { cachedBackground } = await storage.get(["cachedBackground"]);
+    if ((cachedBackground as CachedBackground | undefined)?.rawUrl === photo.rawUrl) return;
+    await storage.set({ cachedBackground: photo, nextBackground: null });
+    triggerUnsplashDownload(photo.downloadLocation);
+  });
+}
+
+export async function loadBackground(
+  opts: { force?: boolean; enabled: boolean; intervalHours: number }
+): Promise<void> {
+  const storage = getPlatform().storage;
+  if (!opts.enabled) {
+    clearBackground();
+    const { cachedBackground } = await storage.get(["cachedBackground"]);
+    const cached = cachedBackground as CachedBackground | undefined;
+    if (cached?.rawUrl) setBackgroundColor(await averageColorOf(cached));
     return;
   }
 
-  if (hasUnsplashKey()) {
-    try {
-      const fresh = await fetchUnsplashRandomPhoto();
-      const imageUrl = buildImageUrl(fresh.rawUrl);
-      const img = await loadImage(imageUrl);
-      const cached: CachedBackground = {
-        rawUrl: fresh.rawUrl,
-        color: fresh.color,
-        averageColor: midtoneColor(img) ?? fresh.color,
-        authorName: fresh.authorName,
-        authorUrl: fresh.authorUrl,
-        photoUrl: fresh.photoUrl,
-        fetchedAt: Date.now(),
-      };
-      await getPlatform().storage.set({
-        cachedBackground: cached,
-        unsplashBackoff: { failures: 0, nextAttemptAt: 0 },
-      });
-      applyBackground({ ...cached, imageUrl });
-      triggerUnsplashDownload(fresh.downloadLocation);
+  const stored = await storage.get(["cachedBackground", "nextBackground", "unsplashBackoff"]);
+  const current = stored.cachedBackground as CachedBackground | undefined;
+  const next = stored.nextBackground as CachedBackground | undefined;
+  const backoff = (stored.unsplashBackoff as UnsplashBackoff | undefined) ?? NO_BACKOFF;
+
+  const intervalMs = (opts.intervalHours || 6) * 60 * 60 * 1000;
+  const rotateAt = (photo: CachedBackground) => photo.fetchedAt + intervalMs;
+  const hasNext = !!next?.rawUrl && next.rawUrl !== current?.rawUrl;
+
+  if (!opts.force && current?.rawUrl && current.fetchedAt && Date.now() < rotateAt(current)) {
+    const shown = applyBackground(current);
+    if (hasNext) rememberRotation(next!, rotateAt(current));
+    else void shown.then((ok) => (ok ? preloadNext(current, rotateAt(current)) : undefined));
+    return;
+  }
+
+  if (hasNext) {
+    const promoted = { ...next!, fetchedAt: Date.now() };
+    if (await applyBackground(promoted)) {
+      forgetRotation();
+      void persistPromotion(promoted).then(() => preloadNext(promoted, rotateAt(promoted)));
       return;
-    } catch (err) {
-      const failures = backoff.failures + 1;
-      const delay = backoffDelayMs(failures);
-      await getPlatform().storage.set({
-        unsplashBackoff: {
-          failures,
-          nextAttemptAt: Date.now() + delay,
-          lastErrorMessage: String((err as Error)?.message || err),
-          lastErrorAt: Date.now(),
-        } satisfies UnsplashBackoff,
-      });
-      console.warn(
-        `Unsplash fetch failed (attempt ${failures}); next attempt in ${Math.round(delay / 1000)}s`,
-        err
-      );
     }
   }
 
-  if (!cachedBackground?.rawUrl) {
-    clearBackground();
+  if (current?.rawUrl) void applyBackground(current);
+
+  if (!hasUnsplashKey() || inBackoff(backoff)) {
+    if (!current?.rawUrl) clearBackground();
+    return;
   }
+
+  await withUnsplashLock(async () => {
+    try {
+      const { photo, img } = await fetchPhoto();
+      await storage.set({
+        cachedBackground: photo,
+        nextBackground: null,
+        unsplashBackoff: NO_BACKOFF,
+      });
+      forgetRotation();
+      await applyBackground(photo, img);
+      triggerUnsplashDownload(photo.downloadLocation);
+      void preloadNext(photo, rotateAt(photo));
+    } catch (err) {
+      await recordFailure("unsplashBackoff", backoff, err);
+      if (!current?.rawUrl) clearBackground();
+    }
+  });
 }
 
 export async function updateBackgroundErrorVisibility(opts: {

@@ -1,13 +1,20 @@
-// One shared view of what sits behind the glass: the wallpaper image (loaded
-// CORS-anonymous so its pixels can be read; plain retry if that is refused)
-// and a single "backdrop changed" signal covering wallpaper swaps, theme,
-// style, tint, clock size, bar position, resize and font load.
+// One shared view of what sits behind the glass: the wallpaper layer (its
+// image loaded CORS-anonymous so pixels can be read; plain retry if that is
+// refused) and a single "backdrop changed" signal covering wallpaper swaps,
+// theme, style, tint, clock size, bar position, resize and font load.
 
-let image: HTMLImageElement | null = null;
-let imageUrl = "";
+let shown: HTMLImageElement | null = null;
 const listeners = new Set<() => void>();
 let frame: number | null = null;
 let observing = false;
+
+declare global {
+  interface Window {
+    // Started by theme-init from the URL mirrored in localStorage, so the
+    // download overlaps script parsing and the extension storage reads.
+    earlyWallpaper?: HTMLImageElement;
+  }
+}
 
 function notify(): void {
   if (frame !== null) return;
@@ -17,39 +24,85 @@ function notify(): void {
   });
 }
 
+function absolute(url: string): string {
+  return new URL(url, location.href).href;
+}
+
+function adoptEarlyWallpaper(url: string): HTMLImageElement | null {
+  const early = window.earlyWallpaper;
+  if (!early || early.src !== absolute(url)) return null;
+  window.earlyWallpaper = undefined;
+  return early;
+}
+
+// Resolves once the image is decoded, so showing or sampling it never decodes
+// on the main thread.
 export function loadImage(url: string, anonymous = true): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    if (anonymous) img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () =>
+    const early = anonymous ? adoptEarlyWallpaper(url) : null;
+    const img = early ?? new Image();
+    const succeed = () => void img.decode().catch(() => {}).then(() => resolve(img));
+    const fail = () =>
       anonymous
         ? loadImage(url, false).then(resolve, reject)
         : reject(new Error(`Failed to load ${url}`));
-    img.src = url;
+    if (early?.complete) {
+      if (early.naturalWidth) succeed();
+      else fail();
+      return;
+    }
+    img.onload = succeed;
+    img.onerror = fail;
+    if (!early) {
+      if (anonymous) img.crossOrigin = "anonymous";
+      img.src = url;
+    }
   });
 }
 
-function load(url: string): void {
-  loadImage(url).then(
-    (img) => {
-      if (url !== imageUrl) return;
-      image = img;
-      notify();
-    },
-    () => {}
-  );
+// Waits for the fade itself rather than a timer: frames stall in hidden tabs,
+// and the old image must stay until the new one is opaque.
+function removeAfterFade(img: HTMLImageElement, fading: HTMLImageElement): void {
+  const remove = () => img.remove();
+  fading.addEventListener("transitionend", remove, { once: true });
+  fading.addEventListener("transitioncancel", remove, { once: true });
+}
+
+// theme-init may already have put the early image on the layer.
+function shownImage(): HTMLImageElement | null {
+  shown ??= document.querySelector<HTMLImageElement>("#wallpaper img:not(.leaving)");
+  return shown;
+}
+
+export function isShowingWallpaper(url: string): boolean {
+  return shownImage()?.src === absolute(url);
+}
+
+// Puts `img` (or nothing) on the wallpaper layer. A new image fades in above
+// the previous one, which stays opaque underneath until the fade is done. By
+// the time the page gets here the base colour has been painted, so even a
+// tab's first wallpaper fades in rather than popping.
+export function showWallpaper(img: HTMLImageElement | null): void {
+  const previous = shownImage();
+  if (img === previous) return;
+  const layer = document.getElementById("wallpaper");
+  if (!layer) return;
+  shown = img;
+  if (img) {
+    img.alt = "";
+    img.draggable = false;
+    img.classList.add("fade-in");
+    layer.append(img);
+  } else {
+    previous?.classList.add("leaving");
+  }
+  if (previous) removeAfterFade(previous, img ?? previous);
+  notify();
 }
 
 export function getWallpaper(): HTMLImageElement | null {
-  const match = /url\(["']?([^"')]+)["']?\)/.exec(getComputedStyle(document.body).backgroundImage);
-  const url = match?.[1] ?? "";
-  if (url !== imageUrl) {
-    imageUrl = url;
-    image = null;
-    if (url) load(url);
-  }
-  return image?.complete && image.naturalWidth > 0 ? image : null;
+  const img = shownImage();
+  return img?.complete && img.naturalWidth > 0 ? img : null;
 }
 
 // Where `background-size: cover; background-position: center` places the
@@ -68,6 +121,11 @@ export function onBackdropChange(cb: () => void): void {
   const observer = new MutationObserver(notify);
   observer.observe(document.documentElement, { attributes: true });
   observer.observe(document.body, { attributes: true });
+  const layer = document.getElementById("wallpaper");
+  if (layer) observer.observe(layer, { childList: true });
+  document.body.addEventListener("transitionend", (e) => {
+    if (e.target === document.body) notify();
+  });
   window.addEventListener("resize", notify);
   document.fonts?.ready.then(notify);
 }
