@@ -63,7 +63,7 @@ AMO accepts PNG or JPG, not animated, under 4 MB each; it stores a 2400×1800 "f
 ```
 This extension reads bookmarks via the bookmarks API and renders the toolbar on the new tab page. The only network destination is api.unsplash.com (when "Show background image" is enabled), used to fetch a random photo from Unsplash's curated wallpaper collection 1053828.
 
-About this version (1.16.0): makes the new tab faster and smoother. The next Unsplash photo is now fetched ahead of time from the same api.unsplash.com endpoint, so there is still one API request per wallpaper change, and the download ping is still sent when a photo is first shown. Open tabs use the Web Locks API so only one of them calls Unsplash at a time. To render before extension storage answers, the page keeps copies in localStorage of its settings, the current and next wallpaper's image URL and colour, and the favicons of bookmarked sites, taken from the existing favicon cache. Nothing new is sent anywhere. Permissions and hosts are identical to 1.15.0.
+About this version (1.16.1): fixes new tabs opening without a wallpaper when the browser had dropped the image from its HTTP cache. The image bytes of the current and the preloaded next photo are now stored in IndexedDB on the device, fetched once from images.unsplash.com with fetch() (the same host and URL the <img> loaded before) and shown from a blob URL. Older images are deleted, and all of them when the wallpaper is turned off. Bundled fonts now use font-display: block and are all preloaded. Nothing new is sent anywhere. Permissions and hosts are identical to 1.16.0.
 
 Build: npm install && npm run build (esbuild monorepo; see README). The public Unsplash Access Key (Client-ID) is read from .env at build time and embedded into the bundle, per Unsplash's API guidelines for client-side apps — it is the only value injected into the source.
 
@@ -98,6 +98,12 @@ maps. No other code generation or templating is involved.
 ## Release notes
 
 > Paste the latest entry into the version's "Release notes" / "What's new" field. Newest first.
+
+### v1.16.1
+
+```
+Fixes new tabs that sometimes opened on a plain colour with no wallpaper after the browser had been idle or restarted. The current wallpaper and the next one are now kept on your device, so they show right away. Also fixes the clock appearing in the system font for a moment before switching to its own.
+```
 
 ### v1.16.0
 

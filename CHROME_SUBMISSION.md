@@ -61,7 +61,7 @@ Fetches a random wallpaper photo from Unsplash's curated wallpaper collection (c
 > CWS field: "Are you using remote code?" — Choose **No**.
 
 ```
-No. All JavaScript and CSS executed by the extension is bundled inside the extension package at build time (esbuild, IIFE bundle). No eval, no Function() construction from strings, no <script src> injection, no WebAssembly fetched at runtime. The extension does not load HTML, JS, or CSS from any remote source. Images fetched from images.unsplash.com are loaded into <img> elements only and are not interpreted as code.
+No. All JavaScript and CSS executed by the extension is bundled inside the extension package at build time (esbuild, IIFE bundle). No eval, no Function() construction from strings, no <script src> injection, no WebAssembly fetched at runtime. The extension does not load HTML, JS, or CSS from any remote source. Images fetched from images.unsplash.com are stored as image data and shown in <img> elements only; they are not interpreted as code.
 ```
 
 ## Data usage disclosure
@@ -97,7 +97,7 @@ https://github.com/nx-alejandrolacasa/mr-newtabby/blob/main/PRIVACY.md
 ```
 Mr. Newtabby replaces the new tab page with the user's Bookmarks Bar laid out as a pill at the top, over an optional Unsplash wallpaper.
 
-About this version (1.16.0): makes the new tab faster and smoother. The next Unsplash photo is now fetched ahead of time from the same api.unsplash.com endpoint, so there is still one API request per wallpaper change, and the download ping is still sent when a photo is first shown. Open tabs use the Web Locks API so only one of them calls Unsplash at a time. To render before extension storage answers, the page keeps copies in localStorage of its settings, the current and next wallpaper's image URL and colour, and the favicons of bookmarked sites, taken from the existing favicon cache. Nothing new is sent anywhere. Permissions and hosts are identical to 1.15.0. The store icon is rasterized from the SVG at build time by a small dependency-free script in the repo (packages/shared/src/build-helpers/icon-png.ts).
+About this version (1.16.1): fixes new tabs opening without a wallpaper when the browser had dropped the image from its HTTP cache. The image bytes of the current and the preloaded next photo are now stored in IndexedDB on the device, fetched once from images.unsplash.com with fetch() (the same host and URL the <img> loaded before) and shown from a blob URL. Older images are deleted, and all of them when the wallpaper is turned off. Bundled fonts now use font-display: block and are all preloaded. Nothing new is sent anywhere. Permissions and hosts are identical to 1.16.0. The store icon is rasterized from the SVG at build time by a small dependency-free script in the repo (packages/shared/src/build-helpers/icon-png.ts).
 
 To test:
 1. Install the unpacked extension or the uploaded package.
@@ -129,5 +129,5 @@ Build notes:
 - [ ] All requested permissions have justifications
 - [ ] Screenshots uploaded (1280×800 or 640×400, at least one)
 - [ ] Store icon = 128×128 PNG (auto-uses `icons.128` from manifest, but the listing slot is separate — upload `packages/shared/assets/icons/icon.png` there too)
-- [ ] Package uploaded: `web-ext-artifacts/mr-newtabby-chrome-v1.16.0.zip`
+- [ ] Package uploaded: `web-ext-artifacts/mr-newtabby-chrome-v1.16.1.zip`
 - [ ] "Why are you requesting these permissions?" field non-empty for every permission
