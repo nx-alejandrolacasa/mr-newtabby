@@ -3,7 +3,7 @@
   src: url("fonts/Cookie-Regular.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 /* Satoshi — personality typeface, used on the clock. One variable file spans
@@ -13,7 +13,7 @@
   src: url("fonts/Satoshi-Variable.ttf") format("truetype");
   font-weight: 300 900;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 /* Shippori Antique B1 — the Glass clock face, bundled so no request ever
@@ -24,7 +24,7 @@
   src: url("fonts/ShipporiAntiqueB1-Latin.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 * {

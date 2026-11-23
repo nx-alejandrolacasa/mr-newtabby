@@ -41,6 +41,10 @@ other 12 family files that were pasted in have been removed.
 build copies assets/fonts/ → @font-face "Satoshi" (300–900) → preload warms it → --font-display token → applied to #clock (500), #search-input, #settings h2 · body stays system sans
 ```
 
+## Later decisions
+
+> **2026-11-23 · Bundled fonts block instead of swapping, and all three are preloaded.** With `font-display: swap` a cold tab painted the clock in the system font and then swapped, even though the files are local, because reading and decoding them still takes a few frames. Cookie, Satoshi and Shippori Antique B1 now use `font-display: block`, and Shippori gets a preload next to the other two. Text in those faces stays invisible for the moment the font takes to load, then appears once. Supersedes the "swap, no FOIT" fallback in item 1.
+
 ## Verification
 
 - `npm run build` both packages — `validateDist` confirms the font ships; type-check is unaffected.
