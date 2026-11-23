@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-11-23
 
 This policy explains what data the **Mr. Newtabby** (formerly Topmarks) browser extension (the "extension") handles, what is transmitted off your device, and how you can control it. It applies to the version of the extension distributed via [addons.mozilla.org](https://addons.mozilla.org) (Firefox) and the [Chrome Web Store](https://chromewebstore.google.com) (Chrome and Chromium-based browsers), and any source-built copy of the same code.
 
@@ -26,10 +26,10 @@ The extension does **not**:
 
 ## 3. Data stored locally on your device
 
-The extension uses your browser's extension storage (`browser.storage.local` in Firefox / `chrome.storage.local` in Chrome) and `window.localStorage` to remember:
+The extension uses your browser's extension storage (`browser.storage.local` in Firefox / `chrome.storage.local` in Chrome) `window.localStorage` and IndexedDB to remember:
 
 - **Your settings** — theme (auto/light/dark), "center bookmarks", per-folder emojis, "show background image", and refresh interval.
-- **A small cache for the most recent background photo** — its base URL, photographer name, photographer profile link, photo page link, the photo's representative color, and the timestamp it was fetched.
+- **A small cache for the most recent background photo** — its base URL, photographer name, photographer profile link, photo page link, the photo's representative color, and the timestamp it was fetched. The image files of the current photo and the next one in line are kept as well, so a new tab can show them without downloading them again; older ones are deleted, and all of them when you turn the background image off.
 - **Tab group snapshots** (only if you enable the optional "Tab groups" feature) — for each group you've opened: its name, color, and the titles and URLs of its member tabs, so a closed group can be reopened from the new tab page. Remove individual entries via the group's "Forget" action, or disable the feature.
 - **A favicon cache** (Firefox, only while the optional `tabs` permission from "Tab groups" is granted) — for each site you open, the icon URL your browser already shows in the tab strip, keyed by site origin (capped at 500 entries), so your bookmarks can display their icons. Firefox does not expose its own favicon cache to extensions.
 

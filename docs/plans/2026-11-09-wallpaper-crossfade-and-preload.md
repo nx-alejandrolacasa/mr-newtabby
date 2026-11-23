@@ -43,6 +43,8 @@
 
 > **2026-11-09 · The old image is removed when the new one's fade ends.** A timer could remove it before the fade finished when frames stall, as they do in hidden tabs, leaving the colour showing. Adds to the entry on keeping the old image opaque.
 
+> **2026-11-23 · Wallpaper bytes are kept in IndexedDB.** Relying on the HTTP cache left tabs on the flat colour whenever the browser had dropped the image, typically after a break or a restart. `wallpaper-store.ts` fetches each photo once and stores the blob under its image URL. theme-init and the page both load through it, so the photo on screen and the preloaded next one are always available locally. The image is shown from a blob URL, which is same-origin, so the CORS-anonymous load and its plain retry are gone; if the bytes cannot be fetched the plain URL is still tried. Every tab prunes the store down to the current and next photo, and to nothing when the wallpaper is off. No new permission: the fetch relies on the `access-control-allow-origin: *` Unsplash already sends. Supersedes the "HTTP cache as the image store" decision.
+
 ## Verification
 
 - Open a tab with an expired interval and a stored next: the new photo and its colour are there on first paint, no swap visible, no Unsplash API request in the network panel.

@@ -1,7 +1,8 @@
-// One shared view of what sits behind the glass: the wallpaper layer (its
-// image loaded CORS-anonymous so pixels can be read; plain retry if that is
-// refused) and a single "backdrop changed" signal covering wallpaper swaps,
-// theme, style, tint, clock size, bar position, resize and font load.
+// One shared view of what sits behind the glass: the wallpaper layer and a
+// single "backdrop changed" signal covering wallpaper swaps, theme, style,
+// tint, clock size, bar position, resize and font load.
+
+import { loadWallpaperImage } from "./wallpaper-store";
 
 let shown: HTMLImageElement | null = null;
 const listeners = new Set<() => void>();
@@ -11,8 +12,8 @@ let observing = false;
 declare global {
   interface Window {
     // Started by theme-init from the URL mirrored in localStorage, so the
-    // download overlaps script parsing and the extension storage reads.
-    earlyWallpaper?: HTMLImageElement;
+    // load overlaps script parsing and the extension storage reads.
+    earlyWallpaper?: { url: string; image: Promise<HTMLImageElement> };
   }
 }
 
@@ -24,40 +25,11 @@ function notify(): void {
   });
 }
 
-function absolute(url: string): string {
-  return new URL(url, location.href).href;
-}
-
-function adoptEarlyWallpaper(url: string): HTMLImageElement | null {
+export function loadImage(url: string): Promise<HTMLImageElement> {
   const early = window.earlyWallpaper;
-  if (!early || early.src !== absolute(url)) return null;
+  if (early?.url !== url) return loadWallpaperImage(url);
   window.earlyWallpaper = undefined;
-  return early;
-}
-
-// Resolves once the image is decoded, so showing or sampling it never decodes
-// on the main thread.
-export function loadImage(url: string, anonymous = true): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const early = anonymous ? adoptEarlyWallpaper(url) : null;
-    const img = early ?? new Image();
-    const succeed = () => void img.decode().catch(() => {}).then(() => resolve(img));
-    const fail = () =>
-      anonymous
-        ? loadImage(url, false).then(resolve, reject)
-        : reject(new Error(`Failed to load ${url}`));
-    if (early?.complete) {
-      if (early.naturalWidth) succeed();
-      else fail();
-      return;
-    }
-    img.onload = succeed;
-    img.onerror = fail;
-    if (!early) {
-      if (anonymous) img.crossOrigin = "anonymous";
-      img.src = url;
-    }
-  });
+  return early.image;
 }
 
 // Waits for the fade itself rather than a timer: frames stall in hidden tabs,
@@ -75,7 +47,7 @@ function shownImage(): HTMLImageElement | null {
 }
 
 export function isShowingWallpaper(url: string): boolean {
-  return shownImage()?.src === absolute(url);
+  return shownImage()?.dataset.url === url;
 }
 
 // Puts `img` (or nothing) on the wallpaper layer. A new image fades in above
@@ -89,8 +61,6 @@ export function showWallpaper(img: HTMLImageElement | null): void {
   if (!layer) return;
   shown = img;
   if (img) {
-    img.alt = "";
-    img.draggable = false;
     img.classList.add("fade-in");
     layer.append(img);
   } else {

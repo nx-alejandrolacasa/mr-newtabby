@@ -5,6 +5,7 @@ import {
   showWallpaper,
   isShowingWallpaper,
 } from "@/wallpaper";
+import { pruneWallpapers } from "@/wallpaper-store";
 
 // Tabliss's curated wallpaper collection — ~545 hand-picked, consistent high quality.
 const UNSPLASH_COLLECTION_ID = "1053828";
@@ -64,7 +65,7 @@ function buildImageUrl(rawUrl: string, width: number): string {
 }
 
 // Reuses the width the photo was downloaded at when it is enough for this
-// screen, so the HTTP cache hits; a bigger screen fetches its own size.
+// screen, so the stored copy is found; a bigger screen fetches its own size.
 function imageUrlFor(photo: CachedBackground): string {
   return buildImageUrl(photo.rawUrl, Math.max(targetImageWidth(), photo.imageWidth ?? 0));
 }
@@ -165,7 +166,7 @@ async function applyBackground(
   loaded?: HTMLImageElement
 ): Promise<boolean> {
   const token = ++applyToken;
-  const url = loaded?.src ?? imageUrlFor(photo);
+  const url = loaded?.dataset.url ?? imageUrlFor(photo);
   if (!isShowingWallpaper(url)) {
     let img = loaded;
     try {
@@ -327,6 +328,7 @@ export async function loadBackground(
     const { cachedBackground } = await storage.get(["cachedBackground"]);
     const cached = cachedBackground as CachedBackground | undefined;
     if (cached?.rawUrl) setBackgroundColor(await averageColorOf(cached));
+    void pruneWallpapers([]);
     return;
   }
 
@@ -334,6 +336,8 @@ export async function loadBackground(
   const current = stored.cachedBackground as CachedBackground | undefined;
   const next = stored.nextBackground as CachedBackground | undefined;
   const backoff = (stored.unsplashBackoff as UnsplashBackoff | undefined) ?? NO_BACKOFF;
+  const storedPhotos = [current, next].filter((photo): photo is CachedBackground => !!photo?.rawUrl);
+  void pruneWallpapers(storedPhotos.map(imageUrlFor));
 
   const intervalMs = (opts.intervalHours || 6) * 60 * 60 * 1000;
   const rotateAt = (photo: CachedBackground) => photo.fetchedAt + intervalMs;

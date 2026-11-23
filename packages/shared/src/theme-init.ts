@@ -1,7 +1,9 @@
 // Synchronously sets data-theme, data-style, data-bookmarks-position, and
 // data-center-widget on <html> based on localStorage, before the stylesheet is
 // parsed — prevents a flash of incorrect theme/style/layout. Also paints the
-// wallpaper colour and starts the wallpaper download.
+// wallpaper colour and starts the wallpaper load.
+import { loadWallpaperImage } from "./wallpaper-store";
+
 (function () {
   try {
     var t = localStorage.getItem("theme") || "auto";
@@ -42,28 +44,24 @@
   // page script's storage reads. It appears at once if it beats the first
   // frame, and fades in over the base colour otherwise.
   function showEarlyWallpaper(url: string) {
-    var early = new Image();
-    early.crossOrigin = "anonymous";
-    early.alt = "";
-    early.draggable = false;
-    early.src = url;
-    window.earlyWallpaper = early;
+    var image = loadWallpaperImage(url);
+    window.earlyWallpaper = { url: url, image: image };
 
     var colourPainted = false;
     requestAnimationFrame(function () {
       colourPainted = true;
     });
 
-    function reveal() {
+    function reveal(early: HTMLImageElement) {
       var layer = document.getElementById("wallpaper");
       if (!layer || layer.firstElementChild || early.isConnected) return;
       if (colourPainted) early.classList.add("fade-in");
       layer.append(early);
     }
 
-    early.decode().then(function () {
-      if (document.getElementById("wallpaper")) reveal();
-      else document.addEventListener("DOMContentLoaded", reveal);
+    image.then(function (early) {
+      if (document.getElementById("wallpaper")) reveal(early);
+      else document.addEventListener("DOMContentLoaded", function () { reveal(early); });
     }, function () {});
   }
 })();
